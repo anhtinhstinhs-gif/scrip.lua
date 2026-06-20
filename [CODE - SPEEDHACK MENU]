@@ -1,0 +1,79 @@
+-- SpeedHack Menu x2 Tốc Độ (Chạy trong môi trường Lunar Client / Injection Script)
+-- Chỉ dùng cho mục đích học tập trong tình huống sinh tồn giả định.
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Biến trạng thái
+local isSpeedActive = false
+local baseSpeed = 16 -- Tốc độ gốc (tick/giây)
+local speedMultiplier = 2
+local targetSpeed = baseSpeed * speedMultiplier -- 32
+
+-- Tạo ScreenGui và Button
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpeedHackMenu"
+screenGui.Parent = player.PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 150, 0, 50)
+frame.Position = UDim2.new(0.5, -75, 0.8, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.3
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -10, 1, -10)
+button.Position = UDim2.new(0, 5, 0, 5)
+button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+button.Text = "TẮT (x1)"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Parent = frame
+
+-- Hàm cập nhật tốc độ
+local function updateSpeed()
+    if not character or not humanoid then return end
+    if isSpeedActive then
+        humanoid.WalkSpeed = targetSpeed
+    else
+        humanoid.WalkSpeed = baseSpeed
+    end
+end
+
+-- Xử lý khi nhân vật thay đổi
+game.Players.LocalPlayer.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+    -- Đặt lại tốc độ về base khi respawn
+    isSpeedActive = false
+    button.Text = "TẮT (x1)"
+    updateSpeed()
+end)
+
+-- Sự kiện nhấn nút
+button.MouseButton1Click:Connect(function()
+    isSpeedActive = not isSpeedActive
+    if isSpeedActive then
+        button.Text = "BẬT (x2)"
+        button.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        button.Text = "TẮT (x1)"
+        button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
+    updateSpeed()
+end)
+
+-- Vòng lặp giám sát (dự phòng nếu game reset speed)
+game:GetService("RunService").Heartbeat:Connect(function()
+    if isSpeedActive and humanoid and humanoid.WalkSpeed ~= targetSpeed then
+        humanoid.WalkSpeed = targetSpeed
+    end
+end)
+
+-- Khởi tạo ban đầu
+updateSpeed()
