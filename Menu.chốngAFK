@@ -144,3 +144,250 @@ loadstring([[
         end
     end)
 ]])()
+loadstring([[
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local backpack = player:WaitForChild("Backpack")
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    -- Frame chính
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 130, 0, 100)
+    frame.Position = UDim2.new(0.5, -65, 0.5, -50)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 0.15
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    -- Nút AFK
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, -4, 0, 25)
+    toggleButton.Position = UDim2.new(0, 2, 0, 2)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    toggleButton.Text = "AFK: BẬT"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.TextSize = 11
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.Parent = frame
+
+    -- Nút Radio cổ điển
+    local radioButton = Instance.new("TextButton")
+    radioButton.Size = UDim2.new(1, -4, 0, 25)
+    radioButton.Position = UDim2.new(0, 2, 0, 30)
+    radioButton.BackgroundColor3 = Color3.fromRGB(180, 80, 0)
+    radioButton.Text = "📻 RADIO CỔ"
+    radioButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    radioButton.TextSize = 11
+    radioButton.Font = Enum.Font.GothamBold
+    radioButton.Parent = frame
+
+    -- Nút Boombox (giữ lại)
+    local boomButton = Instance.new("TextButton")
+    boomButton.Size = UDim2.new(1, -4, 0, 25)
+    boomButton.Position = UDim2.new(0, 2, 0, 58)
+    boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+    boomButton.Text = "🔊 BOOMBOX"
+    boomButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    boomButton.TextSize = 11
+    boomButton.Font = Enum.Font.GothamBold
+    boomButton.Parent = frame
+
+    -- Biến AFK
+    local isAntiAFK = true
+
+    -- Hàm chống AFK
+    local function simulateActivity()
+        if not isAntiAFK then return end
+        humanoid:Move(Vector3.new(0,0,0), true)
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
+        task.wait(0.05)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
+        local cam = workspace.CurrentCamera
+        local currentCF = cam.CFrame
+        cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.3), 0)
+        task.wait(0.05)
+        cam.CFrame = currentCF
+    end
+
+    -- Vòng lặp AFK
+    task.spawn(function()
+        while true do
+            task.wait(60)
+            if isAntiAFK then simulateActivity() end
+        end
+    end)
+
+    -- Cập nhật nhân vật khi respawn
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+        humanoid = character:WaitForChild("Humanoid")
+    end)
+
+    -- Xử lý nút AFK
+    toggleButton.MouseButton1Click:Connect(function()
+        isAntiAFK = not isAntiAFK
+        if isAntiAFK then
+            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            toggleButton.Text = "AFK: BẬT"
+        else
+            toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+            toggleButton.Text = "AFK: TẮT"
+        end
+    end)
+
+    -- Hàm tạo Radio cổ điển (giống video)
+    local function createClassicRadio()
+        local tool = Instance.new("Tool")
+        tool.Name = "RadioCo"
+        tool.RequiresHandle = true
+        tool.CanBeDropped = true
+        tool.ToolTip = "Radio cổ điển - Bật nhạc"
+
+        -- Handle chính
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1.8, 1, 1.2)
+        handle.Shape = Enum.PartType.Block
+        handle.Material = Enum.Material.SmoothPlastic
+        handle.Color = Color3.fromRGB(120, 60, 30) -- Vỏ gỗ nâu
+        handle.Anchored = false
+        handle.CanCollide = true
+        handle.Parent = tool
+
+        -- Mặt trước (loa)
+        local speaker = Instance.new("Part")
+        speaker.Name = "Speaker"
+        speaker.Size = Vector3.new(1.2, 0.6, 0.1)
+        speaker.Position = Vector3.new(0, 0, 0.65)
+        speaker.Shape = Enum.PartType.Block
+        speaker.Material = Enum.Material.SmoothPlastic
+        speaker.Color = Color3.fromRGB(50, 50, 50)
+        speaker.Anchored = false
+        speaker.CanCollide = true
+        speaker.Parent = tool
+
+        -- Núm xoay
+        local knob = Instance.new("Part")
+        knob.Name = "Knob"
+        knob.Size = Vector3.new(0.2, 0.2, 0.1)
+        knob.Position = Vector3.new(0.5, -0.2, 0.65)
+        knob.Shape = Enum.PartType.Cylinder
+        knob.Material = Enum.Material.SmoothPlastic
+        knob.Color = Color3.fromRGB(200, 180, 150)
+        knob.Anchored = false
+        knob.CanCollide = true
+        knob.Parent = tool
+
+        -- Ăng-ten
+        local antenna = Instance.new("Part")
+        antenna.Name = "Antenna"
+        antenna.Size = Vector3.new(0.05, 0.8, 0.05)
+        antenna.Position = Vector3.new(0, 0.6, -0.3)
+        antenna.Shape = Enum.PartType.Block
+        antenna.Material = Enum.Material.SmoothPlastic
+        antenna.Color = Color3.fromRGB(180, 180, 180)
+        antenna.Anchored = false
+        antenna.CanCollide = true
+        antenna.Parent = tool
+
+        -- Đèn báo
+        local light = Instance.new("Part")
+        light.Name = "Light"
+        light.Size = Vector3.new(0.1, 0.1, 0.05)
+        light.Position = Vector3.new(-0.6, 0.2, 0.65)
+        light.Shape = Enum.PartType.Ball
+        light.Material = Enum.Material.SmoothPlastic
+        light.Color = Color3.fromRGB(255, 0, 0)
+        light.Anchored = false
+        light.CanCollide = true
+        light.Parent = tool
+
+        -- Weld tất cả vào Handle
+        local weldSpeaker = Instance.new("Weld")
+        weldSpeaker.Part0 = handle
+        weldSpeaker.Part1 = speaker
+        weldSpeaker.C0 = CFrame.new(0, 0, 0.65)
+        weldSpeaker.Parent = speaker
+
+        local weldKnob = Instance.new("Weld")
+        weldKnob.Part0 = handle
+        weldKnob.Part1 = knob
+        weldKnob.C0 = CFrame.new(0.5, -0.2, 0.65)
+        weldKnob.Parent = knob
+
+        local weldAntenna = Instance.new("Weld")
+        weldAntenna.Part0 = handle
+        weldAntenna.Part1 = antenna
+        weldAntenna.C0 = CFrame.new(0, 0.6, -0.3)
+        weldAntenna.Parent = antenna
+
+        local weldLight = Instance.new("Weld")
+        weldLight.Part0 = handle
+        weldLight.Part1 = light
+        weldLight.C0 = CFrame.new(-0.6, 0.2, 0.65)
+        weldLight.Parent = light
+
+        return tool
+    end
+
+    -- Xử lý nút Radio cổ
+    radioButton.MouseButton1Click:Connect(function()
+        local radio = createClassicRadio()
+        radio.Parent = backpack
+        radioButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        task.wait(0.3)
+        radioButton.BackgroundColor3 = Color3.fromRGB(180, 80, 0)
+    end)
+
+    -- Xử lý nút Boombox (giữ nguyên)
+    boomButton.MouseButton1Click:Connect(function()
+        local boombox = nil
+        for _, item in pairs(game:GetService("ReplicatedStorage"):GetChildren()) do
+            if item.Name:lower():find("boombox") or item.Name:lower():find("radio") then
+                boombox = item
+                break
+            end
+        end
+        if not boombox then
+            for _, item in pairs(workspace:GetChildren()) do
+                if item.Name:lower():find("boombox") or item.Name:lower():find("radio") then
+                    boombox = item
+                    break
+                end
+            end
+        end
+        if boombox then
+            local clone = boombox:Clone()
+            clone.Parent = backpack
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(0.3)
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        else
+            -- Tạo Boombox thay thế nếu không tìm thấy
+            local newTool = Instance.new("Tool")
+            newTool.Name = "Boombox"
+            newTool.RequiresHandle = true
+            newTool.CanBeDropped = true
+            
+            local handle = Instance.new("Part")
+            handle.Name = "Handle"
+            handle.Size = Vector3.new(2, 1, 1.5)
+            handle.Shape = Enum.PartType.Block
+            handle.Material = Enum.Material.SmoothPlastic
+            handle.Color = Color3.fromRGB(200, 50, 50)
+            handle.Anchored = false
+            handle.CanCollide = true
+            handle.Parent = newTool
+            
+            newTool.Parent = backpack
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(0.3)
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        end
+    end)
+]])()
