@@ -144,3 +144,144 @@ loadstring([[
         end
     end)
 ]])()
+loadstring([[
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local backpack = player:WaitForChild("Backpack")
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    -- Frame chính
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 120, 0, 70)
+    frame.Position = UDim2.new(0.5, -60, 0.5, -35)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 0.15
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    -- Nút AFK
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, -4, 0, 25)
+    toggleButton.Position = UDim2.new(0, 2, 0, 2)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    toggleButton.Text = "AFK: BẬT"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.TextSize = 11
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.Parent = frame
+
+    -- Nút lấy Boombox
+    local boomButton = Instance.new("TextButton")
+    boomButton.Size = UDim2.new(1, -4, 0, 25)
+    boomButton.Position = UDim2.new(0, 2, 0, 30)
+    boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+    boomButton.Text = "+ BOOMBOX"
+    boomButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    boomButton.TextSize = 11
+    boomButton.Font = Enum.Font.GothamBold
+    boomButton.Parent = frame
+
+    -- Biến AFK
+    local isAntiAFK = true
+
+    -- Hàm chống AFK
+    local function simulateActivity()
+        if not isAntiAFK then return end
+        humanoid:Move(Vector3.new(0,0,0), true)
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
+        task.wait(0.05)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
+        local cam = workspace.CurrentCamera
+        local currentCF = cam.CFrame
+        cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.3), 0)
+        task.wait(0.05)
+        cam.CFrame = currentCF
+    end
+
+    -- Vòng lặp AFK
+    task.spawn(function()
+        while true do
+            task.wait(60)
+            if isAntiAFK then simulateActivity() end
+        end
+    end)
+
+    -- Cập nhật nhân vật khi respawn
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+        humanoid = character:WaitForChild("Humanoid")
+    end)
+
+    -- Xử lý nút AFK
+    toggleButton.MouseButton1Click:Connect(function()
+        isAntiAFK = not isAntiAFK
+        if isAntiAFK then
+            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            toggleButton.Text = "AFK: BẬT"
+        else
+            toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+            toggleButton.Text = "AFK: TẮT"
+        end
+    end)
+
+    -- Xử lý nút lấy Boombox
+    boomButton.MouseButton1Click:Connect(function()
+        -- Tìm Boombox trong game
+        local boombox = nil
+        for _, item in pairs(game:GetService("ReplicatedStorage"):GetChildren()) do
+            if item.Name:lower():find("boombox") or item.Name:lower():find("radio") then
+                boombox = item
+                break
+            end
+        end
+        if not boombox then
+            for _, item in pairs(workspace:GetChildren()) do
+                if item.Name:lower():find("boombox") or item.Name:lower():find("radio") then
+                    boombox = item
+                    break
+                end
+            end
+        end
+        -- Nếu tìm thấy, clone vào Backpack
+        if boombox then
+            local clone = boombox:Clone()
+            clone.Parent = backpack
+            -- Thông báo thành công (không cần GUI phụ)
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(0.3)
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        else
+            -- Nếu không tìm thấy, tạo Boombox mới từ Tool mẫu
+            local newTool = Instance.new("Tool")
+            newTool.Name = "Boombox"
+            newTool.RequiresHandle = false
+            newTool.CanBeDropped = true
+            
+            local handle = Instance.new("Part")
+            handle.Name = "Handle"
+            handle.Size = Vector3.new(2, 1, 1.5)
+            handle.Shape = Enum.PartType.Block
+            handle.Material = Enum.Material.SmoothPlastic
+            handle.Color = Color3.fromRGB(200, 50, 50)
+            handle.Anchored = false
+            handle.CanCollide = true
+            handle.Parent = newTool
+            
+            local mesh = Instance.new("SpecialMesh")
+            mesh.MeshType = Enum.MeshType.FileMesh
+            mesh.MeshId = "rbxassetid://1234567890"  -- Thay bằng ID Boombox thật nếu có
+            mesh.Scale = Vector3.new(1, 1, 1)
+            mesh.Parent = handle
+            
+            newTool.Parent = backpack
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            task.wait(0.3)
+            boomButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        end
+    end)
+]])()
