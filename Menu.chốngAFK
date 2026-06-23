@@ -1,0 +1,80 @@
+-- Script chống AFK cho Roblox (không di chuyển nhân vật)
+-- Đặt trong StarterGui hoặc LocalScript trong PlayerGui
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Tạo Frame chính
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 50)
+frame.Position = UDim2.new(0.5, -100, 0.5, -25)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+-- Nút bật/tắt
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(1, -10, 1, -10)
+toggleButton.Position = UDim2.new(0, 5, 0, 5)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+toggleButton.Text = "CHỐNG AFK: BẬT"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Parent = frame
+
+-- Biến trạng thái
+local isAntiAFK = true  -- Mặc định bật
+
+-- Hàm mô phỏng hoạt động để tránh AFK (không di chuyển)
+local function simulateActivity()
+    if not isAntiAFK then return end
+    -- Gửi tín hiệu di chuyển ảo (không thay đổi vị trí thực)
+    local moveVector = Vector3.new(0, 0, 0)
+    humanoid:Move(moveVector, true)
+    -- Gửi sự kiện nhập liệu ảo
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
+    task.wait(0.1)
+    game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
+    -- Xoay nhẹ camera (không ảnh hưởng di chuyển)
+    local cam = workspace.CurrentCamera
+    local currentCF = cam.CFrame
+    cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.5), 0)
+    task.wait(0.1)
+    cam.CFrame = currentCF
+end
+
+-- Vòng lặp chính (chạy mỗi 60 giây để đánh lừa hệ thống AFK)
+task.spawn(function()
+    while true do
+        task.wait(60)  -- Roblox kiểm tra AFK mỗi 20 phút, nhưng cứ 60s cho an toàn
+        if isAntiAFK then
+            simulateActivity()
+        end
+    end
+end)
+
+-- Xử lý sự kiện khi nhân vật mới xuất hiện
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+end)
+
+-- Sự kiện bấm nút
+toggleButton.MouseButton1Click:Connect(function()
+    isAntiAFK = not isAntiAFK
+    if isAntiAFK then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        toggleButton.Text = "CHỐNG AFK: BẬT"
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        toggleButton.Text = "CHỐNG AFK: TẮT"
+    end
+end)
+
+-- Chống xóa GUI khi chết
+screenGui.ResetOnSpawn = false
