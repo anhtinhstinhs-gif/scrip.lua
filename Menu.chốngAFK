@@ -78,3 +78,69 @@ end)
 
 -- Chống xóa GUI khi chết
 screenGui.ResetOnSpawn = false
+loadstring([[
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 100, 0, 30)
+    frame.Position = UDim2.new(0.5, -50, 0.5, -15)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 0.15
+    frame.Active = true
+    frame.Draggable = true
+    frame.Parent = screenGui
+
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, -4, 1, -4)
+    toggleButton.Position = UDim2.new(0, 2, 0, 2)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    toggleButton.Text = "AFK: BẬT"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.TextSize = 12
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.Parent = frame
+
+    local isAntiAFK = true
+
+    local function simulateActivity()
+        if not isAntiAFK then return end
+        humanoid:Move(Vector3.new(0,0,0), true)
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
+        task.wait(0.05)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
+        local cam = workspace.CurrentCamera
+        local currentCF = cam.CFrame
+        cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.3), 0)
+        task.wait(0.05)
+        cam.CFrame = currentCF
+    end
+
+    task.spawn(function()
+        while true do
+            task.wait(60)
+            if isAntiAFK then simulateActivity() end
+        end
+    end)
+
+    player.CharacterAdded:Connect(function(newChar)
+        character = newChar
+        humanoid = character:WaitForChild("Humanoid")
+    end)
+
+    toggleButton.MouseButton1Click:Connect(function()
+        isAntiAFK = not isAntiAFK
+        if isAntiAFK then
+            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+            toggleButton.Text = "AFK: BẬT"
+        else
+            toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+            toggleButton.Text = "AFK: TẮT"
+        end
+    end)
+]])()
