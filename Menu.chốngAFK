@@ -145,7 +145,6 @@ loadstring([[
     end)
 ]])()
 
-loadstring([[
     local player = game.Players.LocalPlayer
     if not player then return end
 
