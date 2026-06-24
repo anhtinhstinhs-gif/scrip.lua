@@ -177,7 +177,7 @@ loadstring([[
     title.Font = Enum.Font.GothamBold
     title.Parent = frame
 
-    -- Nút AFK (hàng trên)
+    -- Nút 1: AFK (hàng trên)
     local toggleButton = Instance.new("TextButton")
     toggleButton.Size = UDim2.new(1, -6, 0, 26)
     toggleButton.Position = UDim2.new(0, 3, 0, 22)
@@ -188,11 +188,11 @@ loadstring([[
     toggleButton.Font = Enum.Font.GothamBold
     toggleButton.Parent = frame
 
-    -- Nút Tốc độ (hàng dưới)
+    -- Nút 2: Tốc độ (hàng dưới, màu xanh dương)
     local speedButton = Instance.new("TextButton")
     speedButton.Size = UDim2.new(1, -6, 0, 26)
     speedButton.Position = UDim2.new(0, 3, 0, 51)
-    speedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
+    speedButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200) -- xanh dương
     speedButton.Text = "💨 TỐC ĐỘ: x1"
     speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     speedButton.TextSize = 12
@@ -249,7 +249,7 @@ loadstring([[
         end
     end)
 
-    -- Nút Tốc độ
+    -- Nút Tốc độ (màu xanh dương)
     speedButton.MouseButton1Click:Connect(function()
         if speedMultiplier == 1 then speedMultiplier = 2
         elseif speedMultiplier == 2 then speedMultiplier = 4
@@ -259,7 +259,7 @@ loadstring([[
         speedButton.Text = "💨 TỐC ĐỘ: x" .. speedMultiplier
         speedButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
         task.wait(0.15)
-        speedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
+        speedButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200) -- trở lại xanh dương
     end)
 
     humanoid.Died:Connect(function()
