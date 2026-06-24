@@ -144,33 +144,3 @@ loadstring([[
         end
     end)
 ]])()
-    -- Nút AFK
-    toggleButton.MouseButton1Click:Connect(function()
-        isAntiAFK = not isAntiAFK
-        if isAntiAFK then
-            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-            toggleButton.Text = "🛡 AFK: BẬT"
-        else
-            toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-            toggleButton.Text = "🛡 AFK: TẮT"
-        end
-    end)
-
-    -- Nút Tốc độ (màu xanh dương)
-    speedButton.MouseButton1Click:Connect(function()
-        if speedMultiplier == 1 then speedMultiplier = 2
-        elseif speedMultiplier == 2 then speedMultiplier = 4
-        elseif speedMultiplier == 4 then speedMultiplier = 8
-        else speedMultiplier = 1 end
-        humanoid.WalkSpeed = originalSpeed * speedMultiplier
-        speedButton.Text = "💨 TỐC ĐỘ: x" .. speedMultiplier
-        speedButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        task.wait(0.15)
-        speedButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-    end)
-
-    humanoid.Died:Connect(function()
-        speedMultiplier = 1
-        speedButton.Text = "💨 TỐC ĐỘ: x1"
-    end)
-]])
