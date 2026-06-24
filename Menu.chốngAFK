@@ -156,10 +156,10 @@ loadstring([[
     screenGui.Parent = player:WaitForChild("PlayerGui")
     screenGui.ResetOnSpawn = false
 
-    -- Frame nhỏ gọn
+    -- Frame
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 140, 0, 80)
-    frame.Position = UDim2.new(0.5, -70, 0.5, -40)
+    frame.Size = UDim2.new(0, 150, 0, 85)
+    frame.Position = UDim2.new(0.5, -75, 0.5, -42)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     frame.BackgroundTransparency = 0.15
     frame.Active = true
@@ -177,25 +177,25 @@ loadstring([[
     title.Font = Enum.Font.GothamBold
     title.Parent = frame
 
-    -- Nút AFK
+    -- Nút AFK (hàng trên)
     local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(1, -6, 0, 24)
+    toggleButton.Size = UDim2.new(1, -6, 0, 26)
     toggleButton.Position = UDim2.new(0, 3, 0, 22)
     toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
     toggleButton.Text = "🛡 AFK: BẬT"
     toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleButton.TextSize = 11
+    toggleButton.TextSize = 12
     toggleButton.Font = Enum.Font.GothamBold
     toggleButton.Parent = frame
 
-    -- Nút Tốc độ
+    -- Nút Tốc độ (hàng dưới)
     local speedButton = Instance.new("TextButton")
-    speedButton.Size = UDim2.new(1, -6, 0, 24)
-    speedButton.Position = UDim2.new(0, 3, 0, 49)
+    speedButton.Size = UDim2.new(1, -6, 0, 26)
+    speedButton.Position = UDim2.new(0, 3, 0, 51)
     speedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
     speedButton.Text = "💨 TỐC ĐỘ: x1"
     speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedButton.TextSize = 11
+    speedButton.TextSize = 12
     speedButton.Font = Enum.Font.GothamBold
     speedButton.Parent = frame
 
@@ -204,7 +204,7 @@ loadstring([[
     local originalSpeed = humanoid.WalkSpeed
     local speedMultiplier = 1
 
-    -- Hàm AFK (dùng UserInputService thay vì VirtualInputManager)
+    -- Hàm AFK
     local function simulateActivity()
         if not isAntiAFK then return end
         humanoid:Move(Vector3.new(0,0,0), true)
@@ -223,7 +223,6 @@ loadstring([[
         end
     end
 
-    -- Vòng lặp AFK
     task.spawn(function()
         while true do
             task.wait(60)
@@ -231,7 +230,6 @@ loadstring([[
         end
     end)
 
-    -- Cập nhật khi hồi sinh
     player.CharacterAdded:Connect(function(newChar)
         character = newChar
         humanoid = character:WaitForChild("Humanoid")
@@ -251,7 +249,7 @@ loadstring([[
         end
     end)
 
-    -- Nút Tốc độ (x1 → x2 → x4 → x8 → x1)
+    -- Nút Tốc độ
     speedButton.MouseButton1Click:Connect(function()
         if speedMultiplier == 1 then speedMultiplier = 2
         elseif speedMultiplier == 2 then speedMultiplier = 4
@@ -264,7 +262,6 @@ loadstring([[
         speedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
     end)
 
-    -- Reset tốc độ khi chết
     humanoid.Died:Connect(function()
         speedMultiplier = 1
         speedButton.Text = "💨 TỐC ĐỘ: x1"
