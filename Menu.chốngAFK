@@ -145,25 +145,69 @@ loadstring([[
     end)
 ]])()
 
--- Nút 2: Ẩn/Hiện menu
+-- Frame chính
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 100)
+frame.Position = UDim2.new(0.5, -110, 0.5, -50)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.BackgroundTransparency = 0.2
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+
+-- Nút chống AFK
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(1, -10, 0, 40)
+toggleButton.Position = UDim2.new(0, 5, 0, 5)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0,170,0)
+toggleButton.Text = "CHỐNG AFK: BẬT"
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.Parent = frame
+
+
+-- Nút ẩn menu
 local hideButton = Instance.new("TextButton")
-hideButton.Size = UDim2.new(1, -10, 0, 30)
-hideButton.Position = UDim2.new(0, 5, 1, 5)
-hideButton.BackgroundColor3 = Color3.fromRGB(80,80,80)
+hideButton.Size = UDim2.new(1, -10, 0, 40)
+hideButton.Position = UDim2.new(0, 5, 0, 50)
+hideButton.BackgroundColor3 = Color3.fromRGB(70,70,70)
 hideButton.Text = "ẨN MENU"
 hideButton.TextColor3 = Color3.fromRGB(255,255,255)
 hideButton.Parent = frame
 
-local hidden = false
 
+-- Trạng thái
+local isAntiAFK = true
+local menuHidden = false
+
+
+-- Bật tắt AFK
+toggleButton.MouseButton1Click:Connect(function()
+
+    isAntiAFK = not isAntiAFK
+
+    if isAntiAFK then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0,170,0)
+        toggleButton.Text = "CHỐNG AFK: BẬT"
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(170,0,0)
+        toggleButton.Text = "CHỐNG AFK: TẮT"
+    end
+
+end)
+
+
+-- Ẩn hiện menu
 hideButton.MouseButton1Click:Connect(function()
-    hidden = not hidden
 
-    if hidden then
-        toggleButton.Visible = false
+    menuHidden = not menuHidden
+
+    toggleButton.Visible = not menuHidden
+
+    if menuHidden then
         hideButton.Text = "HIỆN MENU"
     else
-        toggleButton.Visible = true
         hideButton.Text = "ẨN MENU"
     end
+
 end)
