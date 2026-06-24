@@ -144,6 +144,7 @@ loadstring([[
         end
     end)
 ]])()
+
 -- Nút thứ 2: Ẩn/Hiện menu
 local hideButton = Instance.new("TextButton")
 hideButton.Size = UDim2.new(0.5, -7, 0, 35)
