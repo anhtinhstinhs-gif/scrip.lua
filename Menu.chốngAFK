@@ -144,7 +144,6 @@ loadstring([[
         end
     end)
 ]])()
-
 -- Frame chính
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 100)
