@@ -1,70 +1,82 @@
--- Script chống AFK cho Roblox (không di chuyển nhân vật)
--- Đặt trong StarterGui hoặc LocalScript trong PlayerGui
-
+-- Script chống AFK + Ẩn menu (chỉ 1 script, không loadstring)
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- Tạo Frame chính
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
 
+-- Frame chính (đủ cao để chứa 2 nút)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.5, -100, 0.5, -25)
+frame.Size = UDim2.new(0, 200, 0, 100)
+frame.Position = UDim2.new(0.5, -100, 0.5, -50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BackgroundTransparency = 0.2
 frame.Active = true
 frame.Draggable = true
 frame.Parent = screenGui
 
--- Nút bật/tắt
+-- Nút chống AFK (hàng trên)
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(1, -10, 1, -10)
+toggleButton.Size = UDim2.new(1, -10, 0, 40)
 toggleButton.Position = UDim2.new(0, 5, 0, 5)
 toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
 toggleButton.Text = "CHỐNG AFK: BẬT"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 13
+toggleButton.Font = Enum.Font.GothamBold
 toggleButton.Parent = frame
 
--- Biến trạng thái
-local isAntiAFK = true  -- Mặc định bật
+-- Nút ẩn menu (hàng dưới)
+local hideButton = Instance.new("TextButton")
+hideButton.Size = UDim2.new(1, -10, 0, 40)
+hideButton.Position = UDim2.new(0, 5, 0, 50)
+hideButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+hideButton.Text = "ẨN MENU"
+hideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+hideButton.TextSize = 13
+hideButton.Font = Enum.Font.GothamBold
+hideButton.Parent = frame
 
--- Hàm mô phỏng hoạt động để tránh AFK (không di chuyển)
+-- Biến trạng thái
+local isAntiAFK = true
+local menuHidden = false
+
+-- Hàm chống AFK
 local function simulateActivity()
     if not isAntiAFK then return end
-    -- Gửi tín hiệu di chuyển ảo (không thay đổi vị trí thực)
-    local moveVector = Vector3.new(0, 0, 0)
-    humanoid:Move(moveVector, true)
-    -- Gửi sự kiện nhập liệu ảo
-    game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
-    task.wait(0.1)
-    game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
-    -- Xoay nhẹ camera (không ảnh hưởng di chuyển)
+    humanoid:Move(Vector3.new(0, 0, 0), true)
+    local uis = game:GetService("UserInputService")
+    pcall(function()
+        uis:SendKeyEvent(true, Enum.KeyCode.W, false, nil)
+        task.wait(0.05)
+        uis:SendKeyEvent(false, Enum.KeyCode.W, false, nil)
+    end)
     local cam = workspace.CurrentCamera
-    local currentCF = cam.CFrame
-    cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.5), 0)
-    task.wait(0.1)
-    cam.CFrame = currentCF
+    if cam then
+        local currentCF = cam.CFrame
+        cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.3), 0)
+        task.wait(0.05)
+        cam.CFrame = currentCF
+    end
 end
 
--- Vòng lặp chính (chạy mỗi 60 giây để đánh lừa hệ thống AFK)
+-- Vòng lặp chống AFK
 task.spawn(function()
     while true do
-        task.wait(60)  -- Roblox kiểm tra AFK mỗi 20 phút, nhưng cứ 60s cho an toàn
-        if isAntiAFK then
-            simulateActivity()
-        end
+        task.wait(60)
+        if isAntiAFK then pcall(simulateActivity) end
     end
 end)
 
--- Xử lý sự kiện khi nhân vật mới xuất hiện
+-- Xử lý khi nhân vật hồi sinh
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = character:WaitForChild("Humanoid")
 end)
 
--- Sự kiện bấm nút
+-- Sự kiện nút AFK
 toggleButton.MouseButton1Click:Connect(function()
     isAntiAFK = not isAntiAFK
     if isAntiAFK then
@@ -76,82 +88,7 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Chống xóa GUI khi chết
-screenGui.ResetOnSpawn = false
-loadstring([[
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 100, 0, 30)
-    frame.Position = UDim2.new(0.5, -50, 0.5, -15)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    frame.BackgroundTransparency = 0.15
-    frame.Active = true
-    frame.Draggable = true
-    frame.Parent = screenGui
-
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(1, -4, 1, -4)
-    toggleButton.Position = UDim2.new(0, 2, 0, 2)
-    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    toggleButton.Text = "AFK: BẬT"
-    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleButton.TextSize = 12
-    toggleButton.Font = Enum.Font.GothamBold
-    toggleButton.Parent = frame
-
-    local isAntiAFK = true
-
-    local function simulateActivity()
-        if not isAntiAFK then return end
-        humanoid:Move(Vector3.new(0,0,0), true)
-        game:GetService("VirtualInputManager"):SendKeyEvent(true, "W", false, nil)
-        task.wait(0.05)
-        game:GetService("VirtualInputManager"):SendKeyEvent(false, "W", false, nil)
-        local cam = workspace.CurrentCamera
-        local currentCF = cam.CFrame
-        cam.CFrame = currentCF * CFrame.Angles(0, math.rad(0.3), 0)
-        task.wait(0.05)
-        cam.CFrame = currentCF
-    end
-
-    task.spawn(function()
-        while true do
-            task.wait(60)
-            if isAntiAFK then simulateActivity() end
-        end
-    end)
-
-    player.CharacterAdded:Connect(function(newChar)
-        character = newChar
-        humanoid = character:WaitForChild("Humanoid")
-    end)
-
--- Tạo nút ẨN MENU (gắn vào frame có sẵn)
-local hideButton = Instance.new("TextButton")
-hideButton.Size = UDim2.new(1, -10, 0, 40)
-hideButton.Position = UDim2.new(0, 5, 0, 50) -- đặt dưới nút AFK
-hideButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-hideButton.Text = "ẨN MENU"
-hideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-hideButton.TextSize = 13
-hideButton.Font = Enum.Font.GothamBold
-hideButton.Parent = frame  -- gắn vào frame đã có
-
--- Mở rộng frame để chứa 2 nút
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.5, -50)
-
--- Biến trạng thái ẩn
-local menuHidden = false
-
--- Sự kiện cho nút ẩn
+-- Sự kiện nút ẨN MENU
 hideButton.MouseButton1Click:Connect(function()
     menuHidden = not menuHidden
     toggleButton.Visible = not menuHidden
