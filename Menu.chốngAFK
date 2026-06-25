@@ -132,6 +132,7 @@ loadstring([[
         character = newChar
         humanoid = character:WaitForChild("Humanoid")
     end)
+
 -- Tạo nút ẨN MENU (gắn vào frame có sẵn)
 local hideButton = Instance.new("TextButton")
 hideButton.Size = UDim2.new(1, -10, 0, 40)
