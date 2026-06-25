@@ -144,7 +144,6 @@ loadstring([[
         end
     end)
 ]])()
-
 loadstring([[
     local player = game.Players.LocalPlayer
     if not player then return end
@@ -156,44 +155,33 @@ loadstring([[
     screenGui.Parent = player:WaitForChild("PlayerGui")
     screenGui.ResetOnSpawn = false
 
-    -- Frame chính (mở rộng để chứa 3 nút)
+    -- Frame chính (chỉ 2 nút)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 220, 0, 150)
-    frame.Position = UDim2.new(0.5, -110, 0.5, -75)
+    frame.Size = UDim2.new(0, 200, 0, 100)
+    frame.Position = UDim2.new(0.5, -100, 0.5, -50)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     frame.BackgroundTransparency = 0.2
     frame.Active = true
     frame.Draggable = true
     frame.Parent = screenGui
 
-    -- Nút 1: Chống AFK (xanh lá)
+    -- Nút chống AFK (hàng trên)
     local toggleButton = Instance.new("TextButton")
     toggleButton.Size = UDim2.new(1, -10, 0, 40)
     toggleButton.Position = UDim2.new(0, 5, 0, 5)
     toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    toggleButton.Text = "🛡 CHỐNG AFK: BẬT"
+    toggleButton.Text = "CHỐNG AFK: BẬT"
     toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     toggleButton.TextSize = 13
     toggleButton.Font = Enum.Font.GothamBold
     toggleButton.Parent = frame
 
-    -- Nút 2: Tăng tốc độ (xanh dương)
-    local speedButton = Instance.new("TextButton")
-    speedButton.Size = UDim2.new(1, -10, 0, 40)
-    speedButton.Position = UDim2.new(0, 5, 0, 50)
-    speedButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-    speedButton.Text = "💨 TỐC ĐỘ: x1"
-    speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    speedButton.TextSize = 13
-    speedButton.Font = Enum.Font.GothamBold
-    speedButton.Parent = frame
-
-    -- Nút 3: Ẩn menu (xám)
+    -- Nút ẩn menu (hàng dưới)
     local hideButton = Instance.new("TextButton")
     hideButton.Size = UDim2.new(1, -10, 0, 40)
-    hideButton.Position = UDim2.new(0, 5, 0, 95)
+    hideButton.Position = UDim2.new(0, 5, 0, 50)
     hideButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    hideButton.Text = "🔽 ẨN MENU"
+    hideButton.Text = "ẨN MENU"
     hideButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     hideButton.TextSize = 13
     hideButton.Font = Enum.Font.GothamBold
@@ -202,10 +190,8 @@ loadstring([[
     -- Biến trạng thái
     local isAntiAFK = true
     local menuHidden = false
-    local originalSpeed = humanoid.WalkSpeed
-    local speedMultiplier = 1
 
-    -- Hàm chống AFK (dùng UserInputService)
+    -- Hàm chống AFK
     local function simulateActivity()
         if not isAntiAFK then return end
         humanoid:Move(Vector3.new(0, 0, 0), true)
@@ -236,8 +222,6 @@ loadstring([[
     player.CharacterAdded:Connect(function(newChar)
         character = newChar
         humanoid = character:WaitForChild("Humanoid")
-        originalSpeed = humanoid.WalkSpeed
-        humanoid.WalkSpeed = originalSpeed * speedMultiplier
     end)
 
     -- Xử lý nút AFK
@@ -245,45 +229,25 @@ loadstring([[
         isAntiAFK = not isAntiAFK
         if isAntiAFK then
             toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-            toggleButton.Text = "🛡 CHỐNG AFK: BẬT"
+            toggleButton.Text = "CHỐNG AFK: BẬT"
         else
             toggleButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-            toggleButton.Text = "🛡 CHỐNG AFK: TẮT"
+            toggleButton.Text = "CHỐNG AFK: TẮT"
         end
     end)
 
-    -- Xử lý nút Tốc độ
-    speedButton.MouseButton1Click:Connect(function()
-        if speedMultiplier == 1 then speedMultiplier = 2
-        elseif speedMultiplier == 2 then speedMultiplier = 4
-        elseif speedMultiplier == 4 then speedMultiplier = 8
-        else speedMultiplier = 1 end
-        humanoid.WalkSpeed = originalSpeed * speedMultiplier
-        speedButton.Text = "💨 TỐC ĐỘ: x" .. speedMultiplier
-        speedButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        task.wait(0.15)
-        speedButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-    end)
-
-    -- Reset tốc độ khi chết
-    humanoid.Died:Connect(function()
-        speedMultiplier = 1
-        speedButton.Text = "💨 TỐC ĐỘ: x1"
-    end)
-
-    -- Xử lý nút Ẩn/Hiện menu
+    -- Xử lý nút ẩn/hiện menu
     hideButton.MouseButton1Click:Connect(function()
         menuHidden = not menuHidden
         toggleButton.Visible = not menuHidden
-        speedButton.Visible = not menuHidden
         if menuHidden then
-            hideButton.Text = "🔽 HIỆN MENU"
-            frame.Size = UDim2.new(0, 220, 0, 50) -- thu nhỏ frame
-            frame.Position = UDim2.new(0.5, -110, 0.5, -25)
+            hideButton.Text = "HIỆN MENU"
+            frame.Size = UDim2.new(0, 200, 0, 50)
+            frame.Position = UDim2.new(0.5, -100, 0.5, -25)
         else
-            hideButton.Text = "🔽 ẨN MENU"
-            frame.Size = UDim2.new(0, 220, 0, 150)
-            frame.Position = UDim2.new(0.5, -110, 0.5, -75)
+            hideButton.Text = "ẨN MENU"
+            frame.Size = UDim2.new(0, 200, 0, 100)
+            frame.Position = UDim2.new(0.5, -100, 0.5, -50)
         end
     end)
 ]])
