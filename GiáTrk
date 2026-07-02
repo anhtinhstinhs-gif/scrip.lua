@@ -184,3 +184,311 @@ namespace FreeFireESP
         }
     }
 }
+
+// =====================================================
+// BẢN HOÀN CHỈNH - FREE FIRE ESP + AIM ASSIST (READ-ONLY)
+// Không thay đổi dữ liệu game, chỉ đọc và vẽ overlay
+// =====================================================
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+namespace FreeFireESP
+{
+    // === P/Invoke cho Windows/Android (termux) ===
+    internal class NativeMethods
+    {
+        [DllImport("libc.so.6")]
+        public static extern int open(string pathname, int flags);
+
+        [DllImport("libc.so.6")]
+        public static extern int close(int fd);
+
+        [DllImport("libc.so.6")]
+        public static extern int lseek(int fd, long offset, int whence);
+
+        [DllImport("libc.so.6")]
+        public static extern int read(int fd, byte[] buf, int count);
+
+        [DllImport("libc.so.6")]
+        public static extern int write(int fd, byte[] buf, int count);
+
+        public const int O_RDONLY = 0x0000;
+        public const int O_WRONLY = 0x0001;
+        public const int O_RDWR = 0x0002;
+        public const int SEEK_SET = 0;
+        public const int SEEK_CUR = 1;
+        public const int SEEK_END = 2;
+    }
+
+    // === CẤU TRÚC BONE (CHỈ ĐỌC) ===
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BoneData
+    {
+        public float WorldX;
+        public float WorldY;
+        public float WorldZ;
+        public float ScreenX;
+        public float ScreenY;
+        public float ScreenZ; // > 0 = visible
+        public bool IsVisible;
+    }
+
+    // === QUẢN LÝ BONE ===
+    public class BoneManager
+    {
+        // Bone index chuẩn FF (Unreal Engine)
+        private readonly Dictionary<string, int> BoneIndex = new Dictionary<string, int>()
+        {
+            { "Head", 8 },
+            { "Neck", 7 },
+            { "Spine", 6 },
+            { "Chest", 5 },
+            { "Pelvis", 0 },
+            { "LeftUpperArm", 12 },
+            { "LeftLowerArm", 13 },
+            { "LeftHand", 14 },
+            { "RightUpperArm", 15 },
+            { "RightLowerArm", 16 },
+            { "RightHand", 17 },
+            { "LeftThigh", 20 },
+            { "LeftCalf", 21 },
+            { "LeftFoot", 22 },
+            { "RightThigh", 23 },
+            { "RightCalf", 24 },
+            { "RightFoot", 25 }
+        };
+
+        public readonly Dictionary<string, BoneData> Bones = new Dictionary<string, BoneData>();
+        private int memFd;
+        private IntPtr gameBase;
+        private IntPtr boneArrayPtr;
+        private float[] viewMatrix = new float[16];
+        private float[] projMatrix = new float[16];
+
+        public BoneManager(IntPtr gameBase, IntPtr bonePtr, int memFd)
+        {
+            this.gameBase = gameBase;
+            this.boneArrayPtr = bonePtr;
+            this.memFd = memFd;
+            InitializeBones();
+        }
+
+        private void InitializeBones()
+        {
+            foreach (var kvp in BoneIndex)
+                Bones[kvp.Key] = new BoneData();
+        }
+
+        // Đọc ma trận camera từ game (chỉ đọc)
+        private void ReadMatrices()
+        {
+            // Địa chỉ view matrix - cần dump từ game
+            IntPtr viewAddr = gameBase + 0x123456; // placeholder
+            IntPtr projAddr = gameBase + 0x123ABC; // placeholder
+
+            ReadFloatArray(viewAddr, 16, ref viewMatrix);
+            ReadFloatArray(projAddr, 16, ref projMatrix);
+        }
+
+        // Đọc float array từ bộ nhớ game (qua /proc/mem)
+        private void ReadFloatArray(IntPtr address, int count, ref float[] output)
+        {
+            byte[] buffer = new byte[count * 4];
+            NativeMethods.lseek(memFd, (long)address, NativeMethods.SEEK_SET);
+            int bytesRead = NativeMethods.read(memFd, buffer, buffer.Length);
+            if (bytesRead == buffer.Length)
+            {
+                Buffer.BlockCopy(buffer, 0, output, 0, buffer.Length);
+            }
+        }
+
+        // World to Screen với ma trận thực
+        private bool WorldToScreen(float wx, float wy, float wz, out float sx, out float sy)
+        {
+            sx = 0; sy = 0;
+            ReadMatrices();
+
+            // Kết hợp ma trận VP
+            float[] vp = new float[16];
+            for (int i = 0; i < 16; i++)
+                vp[i] = viewMatrix[i] * projMatrix[i]; // đơn giản hóa
+
+            float w = vp[3] * wx + vp[7] * wy + vp[11] * wz + vp[15];
+            if (w < 0.01f) return false;
+
+            float x = (vp[0] * wx + vp[4] * wy + vp[8] * wz + vp[12]) / w;
+            float y = (vp[1] * wx + vp[5] * wy + vp[9] * wz + vp[13]) / w;
+
+            // Chuyển sang tọa độ màn hình (giả định 1080p)
+            sx = (x * 0.5f + 0.5f) * 1920;
+            sy = (y * 0.5f + 0.5f) * 1080;
+            return true;
+        }
+
+        // Cập nhật tất cả bone (chỉ đọc)
+        public void UpdateBones()
+        {
+            foreach (var kvp in BoneIndex)
+            {
+                string name = kvp.Key;
+                int index = kvp.Value;
+                IntPtr boneAddr = IntPtr.Add(boneArrayPtr, index * 0x20);
+
+                float[] worldPos = new float[3];
+                ReadFloatArray(boneAddr, 3, ref worldPos);
+
+                BoneData data = Bones[name];
+                data.WorldX = worldPos[0];
+                data.WorldY = worldPos[1];
+                data.WorldZ = worldPos[2];
+
+                float sx, sy;
+                bool visible = WorldToScreen(worldPos[0], worldPos[1], worldPos[2], out sx, out sy);
+                data.ScreenX = sx;
+                data.ScreenY = sy;
+                data.ScreenZ = visible ? 1.0f : 0.0f;
+                data.IsVisible = visible;
+
+                Bones[name] = data;
+            }
+        }
+
+        public BoneData GetBone(string name) => Bones.ContainsKey(name) ? Bones[name] : new BoneData();
+        public BoneData GetHead() => GetBone("Head");
+        public BoneData GetChest() => GetBone("Chest");
+        public BoneData GetPelvis() => GetBone("Pelvis");
+
+        public void AddCustomBone(string name, int index)
+        {
+            if (!BoneIndex.ContainsKey(name))
+            {
+                BoneIndex.Add(name, index);
+                Bones.Add(name, new BoneData());
+            }
+        }
+    }
+
+    // === AIM ASSIST (CHỈ ĐỌC, KHÔNG GHI) ===
+    public class AimAssist
+    {
+        private BoneManager boneMgr;
+        private float smoothFactor = 0.5f;
+        private float fovRadius = 150.0f;
+
+        public AimAssist(BoneManager mgr)
+        {
+            boneMgr = mgr;
+        }
+
+        // Trả về góc cần xoay (không ghi vào game, chỉ tính toán)
+        public (float deltaX, float deltaY) CalculateAimOffset(float centerX, float centerY)
+        {
+            var head = boneMgr.GetHead();
+            if (!head.IsVisible) return (0, 0);
+
+            float dx = head.ScreenX - centerX;
+            float dy = head.ScreenY - centerY;
+            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+
+            if (dist > fovRadius) return (0, 0);
+
+            // Trả về offset đã làm mượt (không ghi)
+            return (dx * smoothFactor, dy * smoothFactor);
+        }
+    }
+
+    // === OVERLAY VẼ (KHÔNG TƯƠNG TÁC GAME) ===
+    public class Overlay
+    {
+        private BoneManager boneMgr;
+        private AimAssist aim;
+
+        public Overlay(BoneManager mgr)
+        {
+            boneMgr = mgr;
+            aim = new AimAssist(mgr);
+        }
+
+        public void RenderFrame()
+        {
+            boneMgr.UpdateBones();
+
+            var head = boneMgr.GetHead();
+            var chest = boneMgr.GetChest();
+            var pelvis = boneMgr.GetPelvis();
+
+            if (head.IsVisible)
+            {
+                // Vẽ circle đầu
+                DrawCircle((int)head.ScreenX, (int)head.ScreenY, 12, ConsoleColor.Red);
+                // Vẽ line spine
+                DrawLine((int)head.ScreenX, (int)head.ScreenY, 
+                         (int)chest.ScreenX, (int)chest.ScreenY, ConsoleColor.Green);
+                DrawLine((int)chest.ScreenX, (int)chest.ScreenY, 
+                         (int)pelvis.ScreenX, (int)pelvis.ScreenY, ConsoleColor.Yellow);
+
+                // Tính offset aim (chỉ để hiển thị)
+                var offset = aim.CalculateAimOffset(960, 540);
+                Console.WriteLine($"Aim Offset: X={offset.deltaX:F2}, Y={offset.deltaY:F2}");
+            }
+        }
+
+        private void DrawCircle(int x, int y, int radius, ConsoleColor color)
+        {
+            // Sử dụng console để demo - thực tế dùng overlay graphics
+            Console.ForegroundColor = color;
+            Console.SetCursorPosition(x / 2, y / 4);
+            Console.Write("O");
+            Console.ResetColor();
+        }
+
+        private void DrawLine(int x1, int y1, int x2, int y2, ConsoleColor color)
+        {
+            Console.ForegroundColor = color;
+            // Demo - vẽ đơn giản
+            Console.SetCursorPosition((x1 + x2) / 4, (y1 + y2) / 8);
+            Console.Write("|");
+            Console.ResetColor();
+        }
+    }
+
+    // === CHƯƠNG TRÌNH CHÍNH ===
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            Console.WriteLine("=== FREE FIRE ESP + AIM ASSIST (READ-ONLY) ===");
+
+            // Mở /proc/mem để đọc bộ nhớ game (cần root)
+            int memFd = NativeMethods.open("/proc/self/mem", NativeMethods.O_RDONLY);
+            if (memFd < 0)
+            {
+                Console.WriteLine("Không thể mở /proc/mem - cần root hoặc termux với quyền đọc.");
+                return;
+            }
+
+            // Địa chỉ game - cần tìm thực tế qua scan
+            IntPtr gameBase = (IntPtr)0x7FF0000000; // THAY BẰNG BASE ADDRESS THỰC
+            IntPtr boneArray = (IntPtr)0x7FF0001000; // THAY BẰNG BONE ARRAY THỰC
+
+            var boneMgr = new BoneManager(gameBase, boneArray, memFd);
+            var overlay = new Overlay(boneMgr);
+
+            // Vòng lặp chính
+            while (true)
+            {
+                overlay.RenderFrame();
+                Thread.Sleep(16); // 60 FPS
+
+                // Thêm bone tùy chỉnh nếu cần
+                boneMgr.AddCustomBone("CustomBone1", 30);
+            }
+
+            // Cleanup
+            NativeMethods.close(memFd);
+        }
+    }
+}
