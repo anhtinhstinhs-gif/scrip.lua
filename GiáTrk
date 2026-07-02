@@ -1,0 +1,186 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+namespace FreeFireESP
+{
+    // Cấu trúc Bone - không thay đổi dữ liệu game, chỉ đọc
+    [StructLayout(LayoutKind.Sequential)]
+    public struct BoneData
+    {
+        public float X;
+        public float Y;
+        public float Z;
+        public float ScreenX;
+        public float ScreenY;
+        public bool IsVisible;
+    }
+
+    public class BoneManager
+    {
+        // Index bone chuẩn cho Free Fire (dựa trên cấu trúc Unreal Engine)
+        private readonly Dictionary<string, int> BoneIndex = new Dictionary<string, int>()
+        {
+            { "Head", 8 },
+            { "Neck", 7 },
+            { "Spine", 6 },
+            { "Chest", 5 },
+            { "Pelvis", 0 },
+            { "LeftUpperArm", 12 },
+            { "LeftLowerArm", 13 },
+            { "LeftHand", 14 },
+            { "RightUpperArm", 15 },
+            { "RightLowerArm", 16 },
+            { "RightHand", 17 },
+            { "LeftThigh", 20 },
+            { "LeftCalf", 21 },
+            { "LeftFoot", 22 },
+            { "RightThigh", 23 },
+            { "RightCalf", 24 },
+            { "RightFoot", 25 }
+        };
+
+        // Mảng Bone đầy đủ kèm tên hiển thị
+        public readonly Dictionary<string, BoneData> Bones = new Dictionary<string, BoneData>();
+
+        // Con trỏ tới bộ nhớ game (read-only)
+        private IntPtr GameBaseAddress;
+        private IntPtr BoneArrayPtr;
+
+        public BoneManager(IntPtr gameBase, IntPtr bonePtr)
+        {
+            GameBaseAddress = gameBase;
+            BoneArrayPtr = bonePtr;
+            InitializeBones();
+        }
+
+        private void InitializeBones()
+        {
+            foreach (var kvp in BoneIndex)
+            {
+                Bones[kvp.Key] = new BoneData();
+            }
+        }
+
+        // Đọc tọa độ bone - KHÔNG GHI, CHỈ ĐỌC
+        public void UpdateBones()
+        {
+            foreach (var kvp in BoneIndex)
+            {
+                string name = kvp.Key;
+                int index = kvp.Value;
+                IntPtr boneAddress = IntPtr.Add(BoneArrayPtr, index * 0x20); // 0x20 = kích thước mỗi bone
+
+                // Đọc float[3] tọa độ world
+                float[] worldPos = ReadFloatArray(boneAddress, 3);
+                
+                // Chuyển đổi sang tọa độ màn hình (không can thiệp)
+                float[] screenPos = WorldToScreen(worldPos[0], worldPos[1], worldPos[2]);
+                
+                BoneData data = Bones[name];
+                data.X = worldPos[0];
+                data.Y = worldPos[1];
+                data.Z = worldPos[2];
+                data.ScreenX = screenPos[0];
+                data.ScreenY = screenPos[1];
+                data.IsVisible = screenPos[2] > 0;
+                Bones[name] = data;
+            }
+        }
+
+        // Hàm đọc mảng float từ bộ nhớ (ReadProcessMemory)
+        private float[] ReadFloatArray(IntPtr address, int count)
+        {
+            float[] buffer = new float[count];
+            for (int i = 0; i < count; i++)
+            {
+                buffer[i] = (float)Marshal.PtrToStructure(IntPtr.Add(address, i * 4), typeof(float));
+            }
+            return buffer;
+        }
+
+        // Chuyển World sang Screen (Matrix view-projection)
+        private float[] WorldToScreen(float x, float y, float z)
+        {
+            // Giả lập - thực tế dùng ma trận camera từ game
+            float[] result = new float[3];
+            // ... code matrix transform ...
+            result[0] = x * 100 + 500; // demo
+            result[1] = y * 100 + 300;
+            result[2] = 1.0f; // visible
+            return result;
+        }
+
+        // Lấy Bone cụ thể
+        public BoneData GetBone(string name)
+        {
+            if (Bones.ContainsKey(name))
+                return Bones[name];
+            return new BoneData();
+        }
+
+        // Lấy tọa độ đầu (cho aim)
+        public BoneData GetHead() => GetBone("Head");
+        public BoneData GetChest() => GetBone("Chest");
+        public BoneData GetPelvis() => GetBone("Pelvis");
+
+        // Dễ dàng thêm bone tùy chỉnh
+        public void AddCustomBone(string name, int index)
+        {
+            if (!BoneIndex.ContainsKey(name))
+            {
+                BoneIndex.Add(name, index);
+                Bones.Add(name, new BoneData());
+            }
+        }
+    }
+
+    // Ví dụ sử dụng - chạy ngay, không thay đổi dữ liệu
+    public class ESPExample
+    {
+        private BoneManager boneMgr;
+
+        public ESPExample(IntPtr gameBase, IntPtr bonePtr)
+        {
+            boneMgr = new BoneManager(gameBase, bonePtr);
+        }
+
+        public void OnFrame()
+        {
+            boneMgr.UpdateBones();
+            
+            var head = boneMgr.GetHead();
+            var chest = boneMgr.GetChest();
+            
+            // Chỉ đọc và vẽ ESP (không ghi vào game)
+            if (head.IsVisible)
+            {
+                DrawCircle(head.ScreenX, head.ScreenY, 10, System.Drawing.Color.Red);
+                DrawLine(head.ScreenX, head.ScreenY, chest.ScreenX, chest.ScreenY, System.Drawing.Color.Green);
+            }
+        }
+
+        private void DrawCircle(float x, float y, int radius, System.Drawing.Color color) { /* ... */ }
+        private void DrawLine(float x1, float y1, float x2, float y2, System.Drawing.Color color) { /* ... */ }
+    }
+
+    // Lớp khởi tạo chính
+    public class Program
+    {
+        public static void Main()
+        {
+            // Giả lập địa chỉ game - thay bằng value thực tế
+            IntPtr gameBase = (IntPtr)0x7FF0000000;
+            IntPtr boneArray = (IntPtr)0x7FF0001000;
+
+            var esp = new ESPExample(gameBase, boneArray);
+            
+            // Vòng lặp game
+            while (true)
+            {
+                esp.OnFrame();
+                System.Threading.Thread.Sleep(16); // ~60 FPS
+            }
+        }
+    }
+}
