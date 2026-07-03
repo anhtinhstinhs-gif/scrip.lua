@@ -199,7 +199,6 @@ OpenButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = true
     OpenButton.Visible = false
 end)
-
 -- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE
 -- Chức năng: Thay đổi WalkSpeed và JumpPower bằng thanh trượt
 
