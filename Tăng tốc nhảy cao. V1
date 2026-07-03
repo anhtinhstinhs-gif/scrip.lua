@@ -1,0 +1,201 @@
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE
+-- Chức năng: Thay đổi WalkSpeed và JumpPower bằng thanh trượt
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ModMenuMobile"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 2. NÚT MỞ MENU TRÒN (O)
+local OpenButton = Instance.new("TextButton")
+OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.new(0, 50, 0, 50)
+OpenButton.Position = UDim2.new(0, 10, 0, 10)
+OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenButton.Text = "O"
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.TextSize = 24
+OpenButton.Font = Enum.Font.SourceSansBold
+OpenButton.Visible = false -- Ẩn khi menu đang mở
+OpenButton.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenButton
+
+-- 3. KHUNG MENU CHÍNH
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Tựa đề Menu
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 150, 0, 30)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Text = "Mod Menu"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Nút thu nhỏ (—)
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -35, 0, 0)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "—"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
+MinimizeButton.TextSize = 18
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = MainFrame
+
+-- 4. TÍNH NĂNG KÉO THẢ (DRAGGABLE) CHO MOBILE
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- 5. HÀM TẠO THANH TRƯỢT (SLIDER)
+local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, callback)
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -20, 0, 20)
+    Label.Position = UDim2.new(0, 10, 0, yOffset)
+    Label.Text = text .. ": " .. defaultVal
+    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Label.TextSize = 14
+    Label.BackgroundTransparency = 1
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = MainFrame
+
+    local SliderBar = Instance.new("Frame")
+    SliderBar.Size = UDim2.new(1, -20, 0, 10)
+    SliderBar.Position = UDim2.new(0, 10, 0, yOffset + 22)
+    SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    SliderBar.Parent = MainFrame
+
+    local SliderBtn = Instance.new("TextButton")
+    SliderBtn.Size = UDim2.new(0, 20, 0, 20)
+    SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 180, 0, -5)
+    SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    SliderBtn.Text = ""
+    SliderBtn.Parent = SliderBar
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(1, 0)
+    BtnCorner.Parent = SliderBtn
+
+    local sliding = false
+
+    SliderBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = true
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            sliding = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local mousePos = input.Position.X
+            local barStart = SliderBar.AbsolutePosition.X
+            local barWidth = SliderBar.AbsoluteSize.X
+            local percentage = math.clamp((mousePos - barStart) / barWidth, 0, 1)
+            
+            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 20), 0, -5)
+            
+            -- Tính toán giá trị dựa trên bước nhảy +1 đơn vị
+            local calculatedValue = math.floor(minVal + (percentage * (maxVal - minVal)))
+            Label.Text = text .. ": " .. calculatedValue
+            callback(calculatedValue)
+        end
+    end)
+end
+
+-- 6. LOGIC ĐIỀU KHIỂN NHÂN VẬT
+local currentSpeed = 16
+local currentJump = 50
+
+local function updateCharacter(char)
+    local humanoid = char:WaitForChild("Humanoid")
+    if humanoid then
+        humanoid.UseJumpPower = true
+        humanoid.WalkSpeed = currentSpeed
+        humanoid.JumpPower = currentJump
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(updateCharacter)
+if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
+
+-- 7. KHỞI TẠO CÁC THANH TRƯỢT VÀ NÚT BẤM
+createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
+    currentSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = val
+    end
+end)
+
+createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
+    currentJump = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = val
+    end
+end)
+
+-- Sự kiện ẩn/hiện Menu
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    OpenButton.Visible = true
+end)
+
+OpenButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    OpenButton.Visible = false
+end)
