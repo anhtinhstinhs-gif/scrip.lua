@@ -199,3 +199,93 @@ OpenButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = true
     OpenButton.Visible = false
 end)
+
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE
+-- Chức năng: Thay đổi WalkSpeed và JumpPower bằng thanh trượt
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ModMenuMobile"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 2. NÚT MỞ MENU TRÒN (O)
+local OpenButton = Instance.new("TextButton")
+OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.new(0, 50, 0, 50)
+OpenButton.Position = UDim2.new(0, 10, 0, 10)
+OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenButton.Text = "O"
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.TextSize = 24
+OpenButton.Font = Enum.Font.SourceSansBold
+OpenButton.Visible = false -- Ẩn khi menu đang mở
+OpenButton.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenButton
+
+-- 3. KHUNG MENU CHÍNH
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- Tựa đề Menu
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 150, 0, 30)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.Text = "Mod Menu"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+-- Nút thu nhỏ (—)
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -35, 0, 0)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "—"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
+MinimizeButton.TextSize = 18
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = MainFrame
+
+-- 4. TÍNH NĂNG KÉO THẢ (DRAGGABLE) CHO MOBILE
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
