@@ -1,4 +1,4 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + CẦU VỒNG + TƯƠNG TÁC VẬT THỂ
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + SỬA LỖI KHỞI CHẠY + CẦU VỒNG
 -- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Đẩy/Kéo/Khóa vật thể gần nhất
 
 local Players = game:GetService("Players")
@@ -17,6 +17,7 @@ local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 50, 0, 50)
 OpenButton.Position = UDim2.new(0, 10, 0, 10)
+OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 OpenButton.Text = "O"
 OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenButton.TextSize = 24
@@ -28,7 +29,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH (Kích thước phù hợp cho 3 nút tính năng mới)
+-- 3. KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 300)
@@ -122,6 +123,7 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     local SliderBtn = Instance.new("TextButton")
     SliderBtn.Size = UDim2.new(0, 20, 0, 20)
     SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 180, 0, -5)
+    SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     SliderBtn.Text = ""
     SliderBtn.Parent = SliderBar
     
@@ -167,6 +169,7 @@ local function createButton(name, text, yOffset, callback)
     Btn.Name = name
     Btn.Size = UDim2.new(1, -20, 0, 26)
     Btn.Position = UDim2.new(0, 10, 0, yOffset)
+    Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     Btn.Text = text
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     Btn.TextSize = 13
@@ -212,7 +215,7 @@ local function getClosestPart()
     
     local myPos = character.HumanoidRootPart.Position
     local closestPart = nil
-    local minDistance = 50 -- Phạm vi quét trung bình
+    local minDistance = 50
     
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and not obj:IsDescendantOf(character) and not obj.Anchored then
@@ -231,7 +234,6 @@ local function moveObject(distance)
     local part = getClosestPart()
     local character = LocalPlayer.Character
     if part and character and character:FindFirstChild("HumanoidRootPart") then
-        -- Dịch chuyển vật thể theo hướng nhìn của Camera/Nhân vật
         local lookDirection = character.HumanoidRootPart.CFrame.LookVector
         part.Position = part.Position + (lookDirection * distance)
     end
@@ -260,17 +262,14 @@ createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
     end
 end)
 
--- Nút 1: Đẩy vật thể ra xa phía trước (+3 đơn vị)
 createButton("PushObjBtn", "Đẩy vật thể ra xa (+3 Z)", 155, function()
     moveObject(3)
 end)
 
--- Nút 2: Kéo vật thể lại gần phía sau (-3 đơn vị)
 createButton("PullObjBtn", "Kéo vật thể lại gần (-3 Z)", 190, function()
     moveObject(-3)
 end)
 
--- Nút 3: Khóa hoặc thả tự do vật thể gần nhất trên không trung
 createButton("AnchorObjBtn", "Khóa / Thả tự do vật thể", 225, function()
     toggleAnchorObject()
 end)
