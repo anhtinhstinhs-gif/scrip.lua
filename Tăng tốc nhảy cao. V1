@@ -1,5 +1,5 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + HIỆU ỨNG CẦU VỒNG
--- Chức năng: Thay đổi WalkSpeed và JumpPower bằng thanh trượt với hiệu ứng màu sắc
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + CẦU VỒNG + TÍNH NĂNG MỚI
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Thay đổi chiều cao (Y-Axis)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileRainbow"
+ScreenGui.Name = "ModMenuMobileUltimate"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -28,11 +28,11 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH
+-- 3. KHUNG MENU CHÍNH (Tăng chiều cao để chứa thêm nút)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.Size = UDim2.new(0, 220, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -130)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -45,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Mod Menu"
+Title.Text = "Mod Menu V2"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -129,7 +129,6 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     BtnCorner.CornerRadius = UDim.new(1, 0)
     BtnCorner.Parent = SliderBtn
 
-    -- Đưa nút trượt vào danh sách đổi màu cầu vồng
     table.insert(RainbowObjects, SliderBtn)
 
     local sliding = false
@@ -162,7 +161,28 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     end)
 end
 
--- 6. LOGIC ĐIỀU KHIỂN NHÂN VẬT
+-- 6. HÀM TẠO NÚT BẤM (BUTTON CHỨC NĂNG)
+local function createButton(name, text, yOffset, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Name = name
+    Btn.Size = UDim2.new(1, -20, 0, 30)
+    Btn.Position = UDim2.new(0, 10, 0, yOffset)
+    Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.TextSize = 14
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.Parent = MainFrame
+
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(0, 5)
+    BtnCorner.Parent = Btn
+
+    table.insert(RainbowObjects, Btn)
+
+    Btn.MouseButton1Click:Connect(callback)
+end
+
+-- 7. LOGIC ĐIỀU KHIỂN NHÂN VẬT
 local currentSpeed = 16
 local currentJump = 50
 
@@ -178,7 +198,22 @@ end
 LocalPlayer.CharacterAdded:Connect(updateCharacter)
 if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
 
--- 7. KHỞI TẠO CÁC THANH TRƯỢT VÀ NÚT BẤM
+-- TÍNH NĂNG: NHẢY LIÊN TỤC (INFINITE JUMP)
+UserInputService.JumpRequest:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+-- TÍNH NĂNG: THAY ĐỔI CHIỀU CAO (TELEPORT Y)
+local function changeHeight(amount)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        hrp.CFrame = hrp.CFrame * CFrame.new(0, amount, 0)
+    end
+end
+
+-- 8. KHỞI TẠO CÁC THANH TRƯỢT VÀ NÚT BẤM MỚI
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -193,14 +228,22 @@ createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
     end
 end)
 
--- 8. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
+-- Thêm nút tăng chiều cao (Tọa độ Y + 5)
+createButton("HeightUpButton", "Tăng chiều cao (+5 Y)", 155, function()
+    changeHeight(5)
+end)
+
+-- Thêm nút giảm chiều cao (Tọa độ Y - 5)
+createButton("HeightDownButton", "Giảm chiều cao (-5 Y)", 195, function()
+    changeHeight(-5)
+end)
+
+-- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
-    -- Tăng giá trị hue dựa trên thời gian (thay đổi số 0.1 để tăng/giảm tốc độ chuyển màu)
     hue = (hue + (deltaTime * 0.1)) % 1
     local rainbowColor = Color3.fromHSV(hue, 1, 1)
     
-    -- Áp dụng màu mới cho tất cả các đối tượng trong danh sách
     for _, object in ipairs(RainbowObjects) do
         if object and object:IsA("GuiObject") then
             object.BackgroundColor3 = rainbowColor
