@@ -1,5 +1,5 @@
 -- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE
--- Chức năng: WalkSpeed, JumpPower + Hiệu ứng màu cầu vồng chuẩn ổn định
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump + Hiệu ứng màu cầu vồng ổn định
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileRainbowClean"
+ScreenGui.Name = "ModMenuMobileRainbowInfinite"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Mod Menu V1"
+Title.Text = "Mod Menu Ultimate"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -178,6 +178,13 @@ end
 
 LocalPlayer.CharacterAdded:Connect(updateCharacter)
 if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
+
+-- TÍNH NĂNG: NHẢY LIÊN TỤC (INFINITE JUMP) - ĐÃ ĐƯỢC THÊM LẠI HOÀN CHỈNH
+UserInputService.JumpRequest:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
 
 -- 7. KHỞI TẠO CÁC THANH TRƯỢT
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
