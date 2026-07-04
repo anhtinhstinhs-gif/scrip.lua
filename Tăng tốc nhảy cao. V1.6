@@ -1,5 +1,5 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE
--- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xây vòng tròn, Nằm xuống + Cầu vồng
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) TẤU HÀI CHO MOBILE
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng tròn siêu tốc, Nằm sàn lỗi + Cầu vồng
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileUltimateV5"
+ScreenGui.Name = "ModMenuMobileGlitchV6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -29,7 +29,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH (Tăng chiều cao lên 260 để chứa thêm 2 nút)
+-- 3. KHUNG MENU CHÍNH (Chiều cao 260 phù hợp cho các nút glitch)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 260)
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Mod Menu V5"
+Title.Text = "Glitch Menu V6"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -185,7 +185,7 @@ local function createButton(name, text, yOffset, callback)
     Btn.MouseButton1Click:Connect(callback)
 end
 
--- 7. LOGIC ĐIỀU KHIỂN NHÂN VẬT & KHỞI TẠO HỆ THỐNG NỀN
+-- 7. LOGIC ĐIỀU KHIỂN NHÂN VẬT & CÁC TÍNH NĂNG GLITCH TẤU HÀI
 local currentSpeed = 16
 local currentJump = 50
 
@@ -208,50 +208,51 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- TÍNH NĂNG MỚI 1: TỰ XÂY VÒNG TRÒN TẠI CHỖ KHÔNG GÂY LỖI GAME
-local function buildCircleAroundPlayer()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local centerPos = character.HumanoidRootPart.Position - Vector3.new(0, 3, 0) -- Chiều cao nền đất dưới chân
-    local radius = 8 -- Bán kính vòng tròn xung quanh bạn
-    local segments = 12 -- Số lượng khối gạch tạo thành vòng tròn
-    
-    for i = 1, segments do
-        local angle = (i / segments) * math.pi * 2
-        local xOffset = math.cos(angle) * radius
-        local zOffset = math.sin(angle) * radius
-        
-        local part = Instance.new("Part")
-        part.Size = Vector3.new(4, 2, 2)
-        part.Position = centerPos + Vector3.new(xOffset, 1, zOffset)
-        part.CFrame = CFrame.lookAt(part.Position, Vector3.new(centerPos.X, part.Position.Y, centerPos.Z))
-        part.Anchored = true
-        part.Material = Enum.Material.Brick
-        part.BrickColor = BrickColor.new("Bright red")
-        part.Parent = workspace
-    end
-end
+-- GLITCH 1: XOAY VÒNG TRÒN SIÊU TỐC TẠI CHỖ (SPIN BOT)
+local isSpinning = false
+local spinVelocity = nil
 
--- TÍNH NĂNG MỚI 2: NẰM XUỐNG NGAY TẠI CHỖ (LAY DOWN)
-local isLaidDown = false
-local function layDownPlayer()
+local function toggleSpin()
     local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character.HumanoidRootPart
-    
-    if not isLaidDown then
-        -- Xoay nhân vật nằm ngang song song mặt đất
-        hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(-90), 0, 0)
-        isLaidDown = true
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    isSpinning = not isSpinning
+    if isSpinning then
+        -- Tạo lực xoay BodyAngularVelocity để nhân vật xoay tít thò lò
+        spinVelocity = Instance.new("BodyAngularVelocity")
+        spinVelocity.Name = "SpinGlitchForce"
+        spinVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
+        spinVelocity.AngularVelocity = Vector3.new(0, 50, 0) -- Tốc độ xoay tròn
+        spinVelocity.Parent = hrp
     else
-        -- Đứng dậy bình thường
-        hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(95), 0, 0)
-        isLaidDown = false
+        if hrp:FindFirstChild("SpinGlitchForce") then
+            hrp.SpinGlitchForce:Destroy()
+        end
+        if spinVelocity then
+            spinVelocity:Destroy()
+            spinVelocity = nil
+        end
     end
 end
 
--- 8. KHỞI TẠO THANH TRƯỢT VÀ CÁC NÚT TÍNH NĂNG MỚI
+-- GLITCH 2: NẰM SÀN LỖI NGAY TẠI CHỖ (LOWER CHARACTER GLITCH)
+local isLaidDown = false
+local function toggleLayDown()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    isLaidDown = not isLaidDown
+    if isLaidDown then
+        -- Chuyển trạng thái Humanoid sang nằm (Physics) để tạo hiệu ứng trượt sàn lag
+        humanoid.PlatformStand = true
+    else
+        humanoid.PlatformStand = false
+    end
+end
+
+-- 8. KHỔI TẠO CÁC THANH TRƯỢT VÀ NÚT TÍNH NĂNG
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -266,14 +267,14 @@ createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
     end
 end)
 
--- Nút 1 ở trên: Xây vòng tròn gạch bảo vệ bao quanh
-createButton("BuildCircleBtn", "Xây vòng tròn tại chỗ", 160, function()
-    buildCircleAroundPlayer()
+-- Nút 1 ở trên: Bật/Tắt xoay tít thò lò tại chỗ giống lỗi game
+createButton("SpinGlitchBtn", "Bật/Tắt xoay vòng tròn", 160, function()
+    toggleSpin()
 end)
 
--- Nút 2 ở dưới: Thực hiện tư thế nằm xuống mặt đất / Đứng lên
-createButton("LayDownBtn", "Nằm xuống ngay tại chỗ", 200, function()
-    layDownPlayer()
+-- Nút 2 ở dưới: Bật/Tắt nằm sàn lỗi/trượt lag
+createButton("LayDownGlitchBtn", "Bật/Tắt nằm sàn lỗi", 200, function()
+    toggleLayDown()
 end)
 
 -- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
