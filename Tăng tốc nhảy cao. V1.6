@@ -1,5 +1,5 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + CẦU VỒNG + TÍNH NĂNG MỚI
--- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Thay đổi chiều cao (Y-Axis)
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) CHO MOBILE + CẦU VỒNG + TƯƠNG TÁC VẬT THỂ
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Đẩy/Kéo/Khóa vật thể gần nhất
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileUltimate"
+ScreenGui.Name = "ModMenuMobileObjectControl"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -28,11 +28,11 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH (Tăng chiều cao để chứa thêm nút)
+-- 3. KHUNG MENU CHÍNH (Kích thước phù hợp cho 3 nút tính năng mới)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 260)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -130)
+MainFrame.Size = UDim2.new(0, 220, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -150)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -45,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Mod Menu V2"
+Title.Text = "Object Control V3"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -165,11 +165,11 @@ end
 local function createButton(name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
-    Btn.Size = UDim2.new(1, -20, 0, 30)
+    Btn.Size = UDim2.new(1, -20, 0, 26)
     Btn.Position = UDim2.new(0, 10, 0, yOffset)
     Btn.Text = text
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.TextSize = 14
+    Btn.TextSize = 13
     Btn.Font = Enum.Font.SourceSansBold
     Btn.Parent = MainFrame
 
@@ -182,7 +182,7 @@ local function createButton(name, text, yOffset, callback)
     Btn.MouseButton1Click:Connect(callback)
 end
 
--- 7. LOGIC ĐIỀU KHIỂN NHÂN VẬT
+-- 7. LOGIC ĐIỀU KHIỂN NHÂN VẬT & TÌM VẬT THỂ
 local currentSpeed = 16
 local currentJump = 50
 
@@ -198,22 +198,54 @@ end
 LocalPlayer.CharacterAdded:Connect(updateCharacter)
 if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
 
--- TÍNH NĂNG: NHẢY LIÊN TỤC (INFINITE JUMP)
+-- TÍNH NĂNG: NHẢY LIÊN TỤC
 UserInputService.JumpRequest:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
         LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
     end
 end)
 
--- TÍNH NĂNG: THAY ĐỔI CHIỀU CAO (TELEPORT Y)
-local function changeHeight(amount)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        hrp.CFrame = hrp.CFrame * CFrame.new(0, amount, 0)
+-- HÀM TÌM VẬT THỂ GẦN NHẤT TRONG PHẠM VI TRUNG BÌNH (Tối đa 50 đơn vị)
+local function getClosestPart()
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+    
+    local myPos = character.HumanoidRootPart.Position
+    local closestPart = nil
+    local minDistance = 50 -- Phạm vi quét trung bình
+    
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and not obj:IsDescendantOf(character) and not obj.Anchored then
+            local dist = (obj.Position - myPos).Magnitude
+            if dist < minDistance then
+                minDistance = dist
+                closestPart = obj
+            end
+        end
+    end
+    return closestPart
+end
+
+-- TÍNH NĂNG: TƯƠNG TÁC DỊCH CHUYỂN VẬT THỂ
+local function moveObject(distance)
+    local part = getClosestPart()
+    local character = LocalPlayer.Character
+    if part and character and character:FindFirstChild("HumanoidRootPart") then
+        -- Dịch chuyển vật thể theo hướng nhìn của Camera/Nhân vật
+        local lookDirection = character.HumanoidRootPart.CFrame.LookVector
+        part.Position = part.Position + (lookDirection * distance)
     end
 end
 
--- 8. KHỞI TẠO CÁC THANH TRƯỢT VÀ NÚT BẤM MỚI
+-- TÍNH NĂNG: KHÓA CỨNG VẬT THỂ (ANCHOR TOGGLE)
+local function toggleAnchorObject()
+    local part = getClosestPart()
+    if part then
+        part.Anchored = not part.Anchored
+    end
+end
+
+-- 8. KHỞI TẠO CÁC THANH TRƯỢT VÀ 3 NÚT TƯƠNG TÁC VẬT THỂ
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -228,14 +260,19 @@ createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
     end
 end)
 
--- Thêm nút tăng chiều cao (Tọa độ Y + 5)
-createButton("HeightUpButton", "Tăng chiều cao (+5 Y)", 155, function()
-    changeHeight(5)
+-- Nút 1: Đẩy vật thể ra xa phía trước (+3 đơn vị)
+createButton("PushObjBtn", "Đẩy vật thể ra xa (+3 Z)", 155, function()
+    moveObject(3)
 end)
 
--- Thêm nút giảm chiều cao (Tọa độ Y - 5)
-createButton("HeightDownButton", "Giảm chiều cao (-5 Y)", 195, function()
-    changeHeight(-5)
+-- Nút 2: Kéo vật thể lại gần phía sau (-3 đơn vị)
+createButton("PullObjBtn", "Kéo vật thể lại gần (-3 Z)", 190, function()
+    moveObject(-3)
+end)
+
+-- Nút 3: Khóa hoặc thả tự do vật thể gần nhất trên không trung
+createButton("AnchorObjBtn", "Khóa / Thả tự do vật thể", 225, function()
+    toggleAnchorObject()
 end)
 
 -- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
