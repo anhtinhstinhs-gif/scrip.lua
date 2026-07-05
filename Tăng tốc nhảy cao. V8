@@ -1,4 +1,4 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) ĐA NĂNG CHO MOBILE
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) ĐA NĂNG CHO MOBILE - PHIÊN BẢN V8 (FIX LỖI CRASH HITBOX)
 -- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng tròn, Nằm sàn, Hitbox ESP Bộ Phận Màu Trắng + Cầu vồng
 
 local Players = game:GetService("Players")
@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV7"
+ScreenGui.Name = "ModMenuMobileGlitchV8"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -29,7 +29,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH (Tăng chiều cao lên 300 để chứa thêm nút Hitbox)
+-- 3. KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 300)
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V7"
+Title.Text = "Glitch Menu V8"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -245,21 +245,20 @@ local function toggleLayDown()
     end
 end
 
--- TÍNH NĂNG MỚI: HITBOX ESP HÌNH VUÔNG TRẮNG CỐ ĐỊNH TỪNG BỘ PHẬN
+-- TÍNH NĂNG MỚI ĐÃ SỬA LỖI: HITBOX ESP HÌNH VUÔNG TRẮNG CỐ ĐỊNH AN TOÀN
 local hitboxActive = false
-local espConnections = {}
+local espConnection = nil
 
--- Hàm tạo BoxHandleAdornment cố định kích thước thực tế của bộ phận, không bị to theo camera
 local function createPartBox(part)
-    if part:FindFirstChild("HitboxESPMobile") then return end
+    if not part or part:FindFirstChild("HitboxESPMobile") then return end
     
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "HitboxESPMobile"
-    box.Size = part.Size + Vector3.new(0.1, 0.1, 0.1) -- Vừa khít theo kích thước của bộ phận đó
-    box.AlwaysOnTop = true -- Nhìn xuyên tường
+    box.Size = part.Size + Vector3.new(0.05, 0.05, 0.05) -- Ôm khít bộ phận, không đổi kích thước theo Camera
+    box.AlwaysOnTop = true
     box.ZIndex = 5
-    box.Color3 = Color3.fromRGB(255, 255, 255) -- Màu trắng chuẩn
-    box.Transparency = 0.4 -- Độ mờ đường viền hộp
+    box.Color3 = Color3.fromRGB(255, 255, 255)
+    box.Transparency = 0.4
     box.Adornee = part
     box.Parent = part
 end
@@ -267,6 +266,7 @@ end
 local function applyHitboxESP()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
+            -- Chỉ quét các bộ phận cơ thể chính của nhân vật để tránh crash lỗi Mobile
             for _, v in ipairs(plr.Character:GetChildren()) do
                 if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
                     createPartBox(v)
@@ -280,8 +280,9 @@ local function removeHitboxESP()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr.Character then
             for _, v in ipairs(plr.Character:GetChildren()) do
-                if v:IsA("BasePart") and v:FindFirstChild("HitboxESPMobile") then
-                    v.HitboxESPMobile:Destroy()
+                if v:IsA("BasePart") then
+                    local box = v:FindFirstChild("HitboxESPMobile")
+                    if box then box:Destroy() end
                 end
             end
         end
@@ -291,14 +292,22 @@ end
 local function toggleHitboxESP()
     hitboxActive = not hitboxActive
     if hitboxActive then
-        -- Vòng lặp cập nhật liên tục khi có người chơi mới hoặc hồi sinh
-        local conn = RunService.Heartbeat:Connect(function()
-            if hitboxActive then applyHitboxESP() end
+        -- Sử dụng vòng lặp tối ưu tránh quá tải bộ nhớ gây lỗi game
+        espConnection = RunService.Heartbeat:Connect(function()
+            if hitboxActive then
+                applyHitboxESP()
+            else
+                if espConnection then
+                    espConnection:Disconnect()
+                    espConnection = nil
+                end
+            end
         end)
-        table.insert(espConnections, conn)
     else
-        for _, c in ipairs(espConnections) do c:Disconnect() end
-        espConnections = {}
+        if espConnection then
+            espConnection:Disconnect()
+            espConnection = nil
+        end
         removeHitboxESP()
     end
 end
@@ -326,7 +335,7 @@ createButton("LayDownGlitchBtn", "Bật/Tắt nằm sàn lỗi", 200, function()
     toggleLayDown()
 end)
 
--- NÚT MỚI: Bật/Tắt khung vuông trắng cố định bộ phận đối thủ
+-- NÚT: Bật/Tắt khung vuông trắng cố định bộ phận đối thủ (Đã Fix)
 createButton("HitboxESPBtn", "Bật/Tắt Hitbox trắng", 240, function()
     toggleHitboxESP()
 end)
