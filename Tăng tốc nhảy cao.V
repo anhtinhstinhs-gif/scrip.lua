@@ -1,4 +1,4 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V16 (CENTER TRACERS + RAINBOW HITBOX + SMOOTH AIM)
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V16 CHUẨN HOÀN CHỈNH
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -70,7 +70,7 @@ local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 -- CẤU HÌNH VÒNG TRÒN FOV GỐC VÀ ĐỘ MƯỢT AIM
 local R = 130
 local AimActive = true
-local Smoothness = 0.12 -- Hệ số khóa màn hình nhẹ, bám tâm mượt mà
+local Smoothness = 0.12
 
 local F = Instance.new("Frame", ScreenGui)
 F.Name = "FOV_Circle"
@@ -109,17 +109,14 @@ end)
 -- HÀM RAYCAST KIỂM TRA TẦM NHÌN (KHÔNG CHO AIM XUYÊN TƯỜNG/RÀO CẢN)
 local function isPlayerVisible(targetPart)
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
-    
     local origin = Camera.CFrame.Position
     local direction = (targetPart.Position - origin)
-    
     local raycastParams = RaycastParams.new()
     raycastParams.FilterType = Enum.RaycastFilterType.Exclude
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, ScreenGui}
     raycastParams.IgnoreWater = true
     
     local result = workspace:Raycast(origin, direction, raycastParams)
-    
     if result then
         if result.Instance:IsDescendantOf(targetPart.Parent) then
             return true
@@ -162,7 +159,6 @@ end
 
 local function updateVisuals()
     clearVisuals()
-    
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
             local screenPos, onScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
@@ -170,7 +166,6 @@ local function updateVisuals()
                 local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                 local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
                 
-                -- Chỉ hiển thị dây và khung vuông nếu mục tiêu nằm trong vòng tròn hình học FOV
                 if distanceFromCenter <= R then
                     -- A. VẼ DÂY CẦU VỒNG XUẤT PHÁT TỪ GIỮA TÂM HÌNH TRÒN CHỈ ĐẾN ĐỐI THỦ
                     local LineFrame = Instance.new("Frame")
@@ -195,7 +190,6 @@ local function updateVisuals()
                     BoxFrame.BackgroundTransparency = 1
                     BoxFrame.Parent = ScreenGui
                     
-                    -- Tính toán kích thước hộp bao dựa trên khoảng cách camera để tỷ lệ chuẩn xác
                     local hrpHeight = plr.Character.HumanoidRootPart.Size.Y
                     local topPos = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position + Vector3.new(0, hrpHeight * 1.5, 0))
                     local bottomPos = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position - Vector3.new(0, hrpHeight * 1.8, 0))
@@ -219,13 +213,10 @@ end
 -- Vòng lặp Render liên tục bám sát xử lý tọa độ màn hình và bám tâm mịn
 RunService.RenderStepped:Connect(function()
     F.Position = UDim2.new(0.5, 0, 0.5, 0)
-    
     updateVisuals()
-    
     if AimActive then
         local target = getClosestPlayerToCenter()
         if target then
-            -- Thực hiện nội suy góc quay giúp khóa màn hình nhẹ, giảm thiểu rung màn hình trên Mobile
             local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
             Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, Smoothness)
         end
@@ -492,4 +483,12 @@ AimBtn.TextColor3 = Color3.new(0, 1, 0)
 
 createSlider("Speed", "Tốc độ", 75, 16, 200, 16, function(val)
     currentSpeed = val
-    if LocalPlayer.Character and LocalPlayer.Character:F
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
+end)
+
+createSlider("Jump", "Nhảy cao", 130, 50, 300, 50, function(val)
+    currentJump = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
+end)
+
+createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 195, function() toggleSpin(MainFra
