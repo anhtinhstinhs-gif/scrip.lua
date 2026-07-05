@@ -1,6 +1,4 @@
--- MÃ KỊCH BẢN GIAO GIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V12 (KILL AURA TOÀN BẢN ĐỒ SIÊU BÁ ĐẠO)
--- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng, Nằm sàn, Hitbox ESP, Kill Aura Kiếm Toàn Bản Đồ, God Boost FPS
-
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V13 (TÍCH HỢP SILENT AIM FOV + KILL AURA)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -9,8 +7,9 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV12"
+ScreenGui.Name = "ModMenuMobileGlitchV13"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 -- 2. NÚT MỞ MENU TRÒN (O)
@@ -30,11 +29,11 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH
+-- 3. KHUNG MENU CHÍNH (Tăng nhẹ chiều cao lên 390 để chứa nút Aim trên cùng)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 360)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 220, 0, 390)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -195)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -46,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V12"
+Title.Text = "Glitch Menu V13"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -66,7 +65,7 @@ MinimizeButton.Parent = MainFrame
 
 local RainbowObjects = { OpenButton }
 
--- 4. TÍNH NĂNG KÉO THẢ (DRAGGABLE) CHO MOBILE
+-- 4. TÍNH NĂNG KÉO THẢ CHO MENU CHÍNH
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -89,7 +88,53 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- 5. HÀM TẠO THANH TRƯỢT (SLIDER)
+-- 5. CƠ CHẾ VÒNG TRÒN FOV & SILENT AIM (CẬP NHẬT THEO CODE BẠN GỬI)
+local R, S, P, C = 130, 0.15, Players, workspace.CurrentCamera
+local AimActive = true
+
+local F = Instance.new("Frame", ScreenGui)
+F.Name = "FOV_Circle"
+F.AnchorPoint = Vector2.new(0.5, 0.5)
+F.Position = UDim2.new(0.5, 0, 0.5, 0)
+F.Size = UDim2.new(0, R * 2, 0, R * 2)
+F.BackgroundTransparency = 1
+local Stroke = Instance.new("UIStroke", F)
+Stroke.Color = Color3.new(0, 1, 0)
+Stroke.Thickness = 1
+Instance.new("UICorner", F).CornerRadius = UDim.new(1, 0)
+
+-- Hàm tìm mục tiêu gần tâm màn hình nhất nằm trong vòng tròn FOV
+local function getClosestPlayerToCenter()
+    local target = nil
+    local maxDistance = R
+    for _, plr in ipairs(P:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local pos, onScreen = C:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local mousePos = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                if distance < maxDistance then
+                    target = plr.Character.HumanoidRootPart
+                    maxDistance = distance
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- Vòng lặp khóa tâm tự động camera khi AimActive bật
+RunService.RenderStepped:Connect(function()
+    F.Position = UDim2.new(0.5, 0, 0.5, 0) -- Giữ vòng FOV ở chính giữa màn hình
+    if AimActive then
+        local target = getClosestPlayerToCenter()
+        if target then
+            C.CFrame = CFrame.new(C.CFrame.Position, target.Position)
+        end
+    end
+end)
+
+-- 6. HÀM TẠO THANH TRƯỢT (SLIDER)
 local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, -20, 0, 20)
@@ -140,7 +185,7 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     end)
 end
 
--- 6. HÀM TẠO NÚT BẤM CHỨC NĂNG (BUTTON)
+-- 7. HÀM TẠO NÚT BẤM CHỨC NĂNG (BUTTON)
 local function createButton(name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
@@ -161,7 +206,7 @@ local function createButton(name, text, yOffset, callback)
     return Btn
 end
 
--- 7. LOGIC DIỀU KHIỂN NHÂN VẬT GỐC
+-- LOGIC DIỀU KHIỂN NHÂN VẬT GỐC
 local currentSpeed = 16
 local currentJump = 50
 local function updateCharacter(char)
@@ -181,7 +226,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- NÚT 1: XOAY VÒNG TRÒN
+-- XOAY VÒNG TRÒN
 local isSpinning = false
 local spinVelocity = nil
 local function toggleSpin(btn)
@@ -203,7 +248,7 @@ local function toggleSpin(btn)
     end
 end
 
--- NÚT 2: NẰM SÀN LỖI
+-- NẰM SÀN LỖI
 local isLaidDown = false
 local function toggleLayDown(btn)
     isLaidDown = not isLaidDown
@@ -220,11 +265,11 @@ local function toggleLayDown(btn)
     end
 end
 
--- NÚT 3: HITBOX ESP HÌNH VUÔNG TRẮNG
+-- HITBOX ESP HÌNH VUÔNG TRẮNG
 local hitboxActive = false
 local espConnection = nil
 local function removeHitboxESP()
-    for _, plr in ipairs(Players:GetPlayers()) do
+    for _, plr in ipairs(P:GetPlayers()) do
         if plr.Character then
             for _, v in ipairs(plr.Character:GetChildren()) do
                 if v:IsA("BasePart") and v:FindFirstChild("HitboxESPMobile") then v.HitboxESPMobile:Destroy() end
@@ -237,7 +282,7 @@ local function toggleHitboxESP(btn)
     if hitboxActive then
         btn.Text = "Hitbox Trắng: ON"
         espConnection = RunService.Heartbeat:Connect(function()
-            for _, plr in ipairs(Players:GetPlayers()) do
+            for _, plr in ipairs(P:GetPlayers()) do
                 if plr ~= LocalPlayer and plr.Character then
                     for _, v in ipairs(plr.Character:GetChildren()) do
                         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" and not v:FindFirstChild("HitboxESPMobile") then
@@ -262,14 +307,12 @@ local function toggleHitboxESP(btn)
     end
 end
 
--- =========================================================================
--- NÚT 4 BÁ ĐẠO NHẤT: KILL AURA PHÓNG TO KIẾM TOÀN BẢN ĐỒ (5000 x 5000 x 5000)
--- =========================================================================
+-- KILL AURA PHÓNG TO KIẾM TOÀN BẢN ĐỒ
 local hitboxSwordActive = false
 local swordConnection = nil
 local originalSizes = {}
 local lastAttackTime = 0
-local attackCooldown = 0.15 -- Nhịp nghỉ nhỏ chuẩn xác để nhân vật di chuyển mượt mà không bị khựng lại
+local attackCooldown = 0.15
 
 local function resetSword()
     for tool, oldSize in pairs(originalSizes) do
@@ -291,12 +334,8 @@ local function toggleHitboxSword(btn)
             local tool = character:FindFirstChildOfClass("Tool")
             if tool and tool:FindFirstChild("Handle") then
                 if not originalSizes[tool] then originalSizes[tool] = tool.Handle.Size end
-                
-                -- Đẩy kích thước hộp va chạm lên cực đại bao phủ toàn bộ bản đồ game
                 tool.Handle.Size = Vector3.new(5000, 5000, 5000)
-                tool.Handle.CanCollide = false -- Tắt va chạm để không bị kẹt hay văng khỏi bản đồ
-                
-                -- Tự động vung kiếm chém liên tục theo thời gian thực mượt mà
+                tool.Handle.CanCollide = false
                 local currentTime = tick()
                 if currentTime - lastAttackTime >= attackCooldown then
                     tool:Activate()
@@ -319,7 +358,7 @@ LocalPlayer.CharacterRemoving:Connect(function()
     originalSizes = {}
 end)
 
--- NÚT 5: GOD BOOST FPS CẤP SỐ NHÂN
+-- GOD BOOST FPS CẤP SỐ NHÂN
 local boostLevel = 0
 local function toggleBoostFPS(btn)
     boostLevel = boostLevel + 1
@@ -342,22 +381,44 @@ local function toggleBoostFPS(btn)
     end
 end
 
--- 8. KHỞI TẠO CÁC SLIDER VÀ NÚT BẤM V12
-createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
+-- =========================================================================
+-- 8. THIẾT KẾ BỐ CỤC MENU: NÚT AIM TRÊN CÙNG - TĂNG TỐC NHẢY CAO Ở DƯỚI
+-- =========================================================================
+
+-- NÚT AIM Ở TRÊN CÙNG MENU (Y-Offset: 35)
+local AimBtn = createButton("AimBtn", "AIM: ON", 35, function()
+    AimActive = not AimActive
+    if AimActive then
+        MainFrame.AimBtn.Text = "AIM: ON"
+        MainFrame.AimBtn.TextColor3 = Color3.new(0, 1, 0)
+        Stroke.Color = Color3.new(0, 1, 0)
+        F.Visible = true
+    else
+        MainFrame.AimBtn.Text = "AIM: OFF"
+        MainFrame.AimBtn.TextColor3 = Color3.new(1, 0, 0)
+        Stroke.Color = Color3.new(1, 0, 0)
+        F.Visible = false
+    end
+end)
+AimBtn.TextColor3 = Color3.new(0, 1, 0)
+
+-- CÁC THANH TRƯỢT ĐẨY XUỐNG DƯỚI
+createSlider("Speed", "Tốc độ", 75, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
-createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
+createSlider("Jump", "Nhảy cao", 130, 50, 300, 50, function(val)
     currentJump = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 160, function() toggleSpin(MainFrame.SpinBtn) end)
-createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 195, function() toggleLayDown(MainFrame.LayBtn) end)
-createButton("EspBtn", "Bật/Tắt Hitbox trắng", 230, function() toggleHitboxESP(MainFrame.EspBtn) end)
-createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 265, function() toggleHitboxSword(MainFrame.SwordBtn) end)
-createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 300, function() toggleBoostFPS(MainFrame.BoostBtn) end)
+-- CÁC NÚT TÍNH NĂNG KHÁC XẾP SAU THANH TRƯỢT
+createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 195, function() toggleSpin(MainFrame.SpinBtn) end)
+createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 230, function() toggleLayDown(MainFrame.LayBtn) end)
+createButton("EspBtn", "Bật/Tắt Hitbox trắng", 265, function() toggleHitboxESP(MainFrame.EspBtn) end)
+createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 300, function() toggleHitboxSword(MainFrame.SwordBtn) end)
+createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 335, function() toggleBoostFPS(MainFrame.BoostBtn) end)
 
 -- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
 local hue = 0
