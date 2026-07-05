@@ -1,4 +1,4 @@
--- MÃ NGUỒN CHẠY TRỰC TIẾP KHÔNG CÓ AIM/DÂY - PHIÊN BẢN V16.2 ỔN ĐỊNH
+-- MÃ NGUỒN PHIÊN BẢN V16.3 - KHÔNG AIM/DÂY - CÓ NÚT TĂNG TỐC NHẢY CAO
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,12 +7,12 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. KHỞI TẠO HỆ THỐNG PHẦN TỬ ĐỒ HỌA GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV16_2"
+ScreenGui.Name = "ModMenuMobileGlitchV16_3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. NÚT NỔI O - ĐẶT DƯỚI LOGO ROBLOX ĐỂ KHÔNG BỊ KHUẤT
+-- 2. NÚT NỔI O - ĐẶT DƯỚI LOGO ROBLOX ĐỂ KHÔNG BÌ KHUẤT
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 45, 0, 45)
@@ -32,8 +32,8 @@ OpenCorner.Parent = OpenButton
 -- 3. KHUNG BẢNG MENU CHÍNH CHỨA TẤT CẢ CHỨC NĂNG
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -175)
+MainFrame.Size = UDim2.new(0, 220, 0, 385)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -192)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -45,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V16.2"
+Title.Text = "Glitch Menu V16.3"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -164,6 +164,8 @@ end
 -- ĐIỀU KHIỂN GIÁ TRỊ GỐC CHO HỆ THỐNG NHÂN VẬT CHÍNH
 local currentSpeed = 16
 local currentJump = 50
+local jumpBoostActive = false
+
 local function updateCharacter(char)
     local humanoid = char:WaitForChild("Humanoid")
     if humanoid then
@@ -175,9 +177,15 @@ end
 LocalPlayer.CharacterAdded:Connect(updateCharacter)
 if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
 
+-- CƠ CHẾ NHẢY LIÊN TỤC / TĂNG TỐC NHẢY CAO XỬ LÝ KHÔNG GIỚI HẠN
 UserInputService.JumpRequest:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        if jumpBoostActive then
+            -- Khi bật tăng tốc nhảy cao, nhân vật có thể nhảy liên tiếp trên không
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        else
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
     end
 end)
 
@@ -341,11 +349,21 @@ createSlider("Jump", "Nhảy cao", 90, 50, 300, 50, function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 155, function() toggleSpin(MainFrame.SpinBtn) end)
-createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 190, function() toggleLayDown(MainFrame.LayBtn) end)
-createButton("EspBtn", "Bật/Tắt Hitbox trắng", 225, function() toggleHitboxESP(MainFrame.EspBtn) end)
-createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 260, function() toggleHitboxSword(MainFrame.SwordBtn) end)
-createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 295, function() toggleBoostFPS(MainFrame.BoostBtn) end)
+-- NÚT MỚI: TĂNG TỐC NHẢY CAO (JUMP BOOST / INFINITE JUMP)
+local JumpBoostBtn = createButton("JumpBoostBtn", "Tăng tốc nhảy cao: OFF", 155, function()
+    jumpBoostActive = not jumpBoostActive
+    if jumpBoostActive then
+        MainFrame.JumpBoostBtn.Text = "Tăng tốc nhảy cao: ON"
+    else
+        MainFrame.JumpBoostBtn.Text = "Tăng tốc nhảy cao: OFF"
+    end
+end)
+
+createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 190, function() toggleSpin(MainFrame.SpinBtn) end)
+createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 225, function() toggleLayDown(MainFrame.LayBtn) end)
+createButton("EspBtn", "Bật/Tắt Hitbox trắng", 260, function() toggleHitboxESP(MainFrame.EspBtn) end)
+createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 295, function() toggleHitboxSword(MainFrame.SwordBtn) end)
+createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 330, function() toggleBoostFPS(MainFrame.BoostBtn) end)
 
 -- 8. VÒNG LẶP ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ TOÀN HỆ THỐNG ĐỒ HỌA
 local hue = 0
