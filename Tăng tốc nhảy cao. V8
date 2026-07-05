@@ -1,5 +1,5 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) ĐA NĂNG - PHIÊN BẢN V9 (HITBOX KIẾM + GOD BOOST FPS)
--- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng, Nằm sàn, Hitbox Kiếm, God Boost FPS + Cầu vồng
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V10 (SỬA TOÀN BỘ LỖI KHÔNG CHẠY NÚT)
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng, Nằm sàn, Hitbox ESP, Hitbox Kiếm, God Boost FPS
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV9"
+ScreenGui.Name = "ModMenuMobileGlitchV10"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -30,11 +30,11 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH (Tăng chiều cao lên 340 để đủ chỗ cho 2 nút mới siêu bá đạo)
+-- 3. KHUNG MENU CHÍNH (Chiều cao 360 rộng rãi không lo đè nút)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 340)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -170)
+MainFrame.Size = UDim2.new(0, 220, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -180)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V9"
+Title.Text = "Glitch Menu V10"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -161,7 +161,7 @@ local function createButton(name, text, yOffset, callback)
     return Btn
 end
 
--- 7. LOGIC CƠ BẢN NHÂN VẬT
+-- 7. LOGIC DIỀU KHIỂN NHÂN VẬT (GỐC)
 local currentSpeed = 16
 local currentJump = 50
 local function updateCharacter(char)
@@ -182,17 +182,102 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- =========================================================================
--- TÍNH NĂNG MỚI 1: HITBOX KIẾM TO + AUTO ATTACK KHÔNG LỌC CHẾT NHÂN VẬT
+-- ĐÃ ĐƯỢC KẾT NỐI HÀM: LOGIC CỦA 5 NÚT CHỨC NĂNG PHÍA DƯỚI
 -- =========================================================================
+
+-- NÚT 1: XOAY VÒNG TRÒN
+local isSpinning = false
+local spinVelocity = nil
+local function toggleSpin(btn)
+    isSpinning = not isSpinning
+    local character = LocalPlayer.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if isSpinning and hrp then
+        btn.Text = "Xoay Vòng: ON"
+        spinVelocity = Instance.new("BodyAngularVelocity")
+        spinVelocity.Name = "SpinGlitchForce"
+        spinVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
+        spinVelocity.AngularVelocity = Vector3.new(0, 60, 0)
+        spinVelocity.Parent = hrp
+    else
+        btn.Text = "Bật/Tắt xoay vòng tròn"
+        if hrp and hrp:FindFirstChild("SpinGlitchForce") then hrp.SpinGlitchForce:Destroy() end
+        if spinVelocity then spinVelocity:Destroy() spinVelocity = nil end
+        isSpinning = false
+    end
+end
+
+-- NÚT 2: NẰM SÀN LỖI
+local isLaidDown = false
+local function toggleLayDown(btn)
+    isLaidDown = not isLaidDown
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    
+    if humanoid then
+        if isLaidDown then
+            btn.Text = "Nằm Sàn: ON"
+            humanoid.PlatformStand = true
+        else
+            btn.Text = "Bật/Tắt nằm sàn lỗi"
+            humanoid.PlatformStand = false
+        end
+    end
+end
+
+-- NÚT 3: HITBOX ESP HÌNH VUÔNG TRẮNG
+local hitboxActive = false
+local espConnection = nil
+
+local function removeHitboxESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            for _, v in ipairs(plr.Character:GetChildren()) do
+                if v:IsA("BasePart") and v:FindFirstChild("HitboxESPMobile") then
+                    v.HitboxESPMobile:Destroy()
+                end
+            end
+        end
+    end
+end
+
+local function toggleHitboxESP(btn)
+    hitboxActive = not hitboxActive
+    if hitboxActive then
+        btn.Text = "Hitbox Trắng: ON"
+        espConnection = RunService.Heartbeat:Connect(function()
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character then
+                    for _, v in ipairs(plr.Character:GetChildren()) do
+                        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" and not v:FindFirstChild("HitboxESPMobile") then
+                            local box = Instance.new("BoxHandleAdornment")
+                            box.Name = "HitboxESPMobile"
+                            box.Size = v.Size + Vector3.new(0.05, 0.05, 0.05)
+                            box.AlwaysOnTop = true
+                            box.ZIndex = 5
+                            box.Color3 = Color3.fromRGB(255, 255, 255)
+                            box.Transparency = 0.4
+                            box.Adornee = v
+                            box.Parent = v
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        btn.Text = "Bật/Tắt Hitbox trắng"
+        if espConnection then espConnection:Disconnect() espConnection = nil end
+        removeHitboxESP()
+    end
+end
+
+-- NÚT 4: HITBOX KIẾM TO + AUTO ATTACK
 local hitboxSwordActive = false
 local swordConnection = nil
 local originalSizes = {}
 
-local function resetSwordProperties()
-    local character = LocalPlayer.Character
-    if not character then return end
-    
-    -- Khôi phục kích thước ban đầu của tất cả vũ khí
+local function resetSword()
     for tool, oldSize in pairs(originalSizes) do
         if tool and tool.Parent and tool:FindFirstChild("Handle") then
             tool.Handle.Size = oldSize
@@ -209,155 +294,82 @@ local function toggleHitboxSword(btn)
         swordConnection = RunService.Heartbeat:Connect(function()
             local character = LocalPlayer.Character
             if not character then return end
-            
             local tool = character:FindFirstChildOfClass("Tool")
             if tool and tool:FindFirstChild("Handle") then
-                -- Lưu lại kích thước cũ nếu chưa lưu
-                if not originalSizes[tool] then
-                    originalSizes[tool] = tool.Handle.Size
-                end
-                
-                -- Phóng to lưỡi kiếm ra kích thước khổng lồ để quét tầm xa
-                tool.Handle.Size = Vector3.new(25, 25, 25)
-                tool.Handle.CanCollide = false -- Tắt va chạm tuyệt đối để không bị lọc/đẩy văng nhân vật
-                
-                -- Tự động kích hoạt hành động chém liên tục
+                if not originalSizes[tool] then originalSizes[tool] = tool.Handle.Size end
+                tool.Handle.Size = Vector3.new(20, 20, 20)
+                tool.Handle.CanCollide = false
                 tool:Activate()
             else
-                -- Nếu cất kiếm đi thì tạm thời hồi phục kích thước lưu trữ ẩn
-                resetSwordProperties()
+                resetSword()
             end
         end)
     else
         btn.Text = "Hitbox Kiếm: OFF"
-        if swordConnection then
-            swordConnection:Disconnect()
-            swordConnection = nil
-        end
-        resetSwordProperties()
+        if swordConnection then swordConnection:Disconnect() swordConnection = nil end
+        resetSword()
     end
 end
 
--- Tự động tắt tính năng khi người chơi bị chết (Reset nhân vật) để tránh lỗi game
 LocalPlayer.CharacterRemoving:Connect(function()
-    if hitboxSwordActive then
-        hitboxSwordActive = false
-        if swordConnection then
-            swordConnection:Disconnect()
-            swordConnection = nil
-        end
-        originalSizes = {}
-    end
+    hitboxSwordActive = false
+    if swordConnection then swordConnection:Disconnect() swordConnection = nil end
+    originalSizes = {}
 end)
 
--- =========================================================================
--- TÍNH NĂNG MỚI 2: SIÊU BOOST FPS THEO CẤP SỐ NHÂN (GOD BOOST EXTRA)
--- =========================================================================
-local boostClickCount = 0
-
-local function ultraBoostFPS(btn)
-    boostClickCount = boostClickCount + 1
-    btn.Text = "God Boost FPS (Cấp " .. boostClickCount .. ")"
-    
-    -- Vô hiệu hóa tối đa giới hạn khung hình nội bộ của game
+-- NÚT 5: GOD BOOST FPS CẤP SỐ NHÂN
+local boostLevel = 0
+local function toggleBoostFPS(btn)
+    boostLevel = boostLevel + 1
+    btn.Text = "God Boost FPS (Cấp " .. boostLevel .. ")"
     if setfpscap then setfpscap(999) end
     
-    -- Cấp số nhân 1: Xóa toàn bộ hiệu ứng ánh sáng chuyên sâu nâng cao
-    if boostClickCount >= 1 then
+    if boostLevel >= 1 then
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        for _, v in ipairs(Lighting:GetChildren()) do
-            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
-                v.Enabled = false
-            end
+    end
+    if boostLevel >= 2 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic v.CastShadow = false end
         end
     end
-    
-    -- Cấp số nhân 2: Ép tất cả vật liệu bề mặt (Gạch, Gỗ, Cỏ...) về dạng nhựa trơn nhẵn phẳng lỳ cực nhẹ
-    if boostClickCount >= 2 then
-        for _, descendant in ipairs(workspace:GetDescendants()) do
-            if descendant:IsA("BasePart") then
-                descendant.Material = Enum.Material.SmoothPlastic
-                descendant.CastShadow = false
-            end
-        end
-    end
-    
-    -- Cấp số nhân 3: Xóa triệt để các hạt hiệu ứng rác chuyển động (Khói, Lửa, Hạt nước lấp lánh)
-    if boostClickCount >= 3 then
-        for _, descendant in ipairs(workspace:GetDescendants()) do
-            if descendant:IsA("ParticleEmitter") or descendant:IsA("Smoke") or descendant:IsA("Fire") or descendant:IsA("Sparkles") then
-                descendant:Destroy()
-            end
-        end
-    end
-    
-    -- Cấp số nhân 4 (Cực đại): Giảm chất lượng dựng hình vật thể ở xa về dạng tối giản 2D
-    if boostClickCount >= 4 then
-        for _, descendant in ipairs(workspace:GetDescendants()) do
-            if descendant:IsA("Decal") or descendant:IsA("Texture") then
-                descendant:Destroy()
-            end
+    if boostLevel >= 3 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") then v:Destroy() end
         end
     end
 end
 
 -- =========================================================================
--- 8. KHỞI TẠO CÁC NÚT TRÊN MENU
+-- 8. KHỞI TẠO VÀ KHỚP CÁC NÚT BẤM (ĐÃ SỬA KẾT NỐI CLICK)
 -- =========================================================================
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
     currentSpeed = val
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = val
-    end
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
 createSlider("Jump", "Nhảy cao", 95, 50, 300, 50, function(val)
     currentJump = val
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.JumpPower = val
-    end
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-local btnSpin = createButton("SpinGlitchBtn", "Bật/Tắt xoay vòng tròn", 160, function()
-    -- Hàm xoay vòng đã tích hợp ở bản trước
-end)
-
-local btnLay = createButton("LayDownGlitchBtn", "Bật/Tắt nằm sàn lỗi", 195, function()
-    -- Hàm nằm sàn đã tích hợp ở bản trước
-end)
-
--- NÚT KIẾM MỚI BÁ ĐẠO
-local btnHitboxSword = createButton("HitboxSwordBtn", "Hitbox Kiếm: OFF", 230, function()
-    toggleHitboxSword(script.Parent.MainFrame.HitboxSwordBtn)
-end)
-
--- NÚT SIÊU BOOST FPS CẤP SỐ NHÂN
-local btnBoostFPS = createButton("GodBoostFPSBtn", "God Boost FPS (Click để Nhân)", 265, function()
-    ultraBoostFPS(script.Parent.MainFrame.GodBoostFPSBtn)
-end)
+-- Gắn kết nối sự kiện trực tiếp vào nút bấm khi khởi tạo
+local btn1 = createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 160, function() toggleSpin(MainFrame.SpinBtn) end)
+local btn2 = createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 195, function() toggleLayDown(MainFrame.LayBtn) end)
+local btn3 = createButton("EspBtn", "Bật/Tắt Hitbox trắng", 230, function() toggleHitboxESP(MainFrame.EspBtn) end)
+local btn4 = createButton("SwordBtn", "Hitbox Kiếm: OFF", 265, function() toggleHitboxSword(MainFrame.SwordBtn) end)
+local btn5 = createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 300, function() toggleBoostFPS(MainFrame.BoostBtn) end)
 
 -- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
     local rainbowColor = Color3.fromHSV(hue, 1, 1)
-    
     for _, object in ipairs(RainbowObjects) do
-        if object and object:IsA("GuiObject") then
-            object.BackgroundColor3 = rainbowColor
-        end
+        if object and object:IsA("GuiObject") then object.BackgroundColor3 = rainbowColor end
     end
 end)
 
--- Sự kiện ẩn/hiện Menu
-MinimizeButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    OpenButton.Visible = true
-end)
-
-OpenButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    OpenButton.Visible = false
-end)
+MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenButton.Visible = true end)
+OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenButton.Visible = false end)
