@@ -1,4 +1,4 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V16 CHUẨN HOÀN CHỈNH
+-- MÃ NGUỒN CHẠY TRỰC TIẾP KHÔNG QUA LINK - PHIÊN BẢN V16.1 ĐẦY ĐỦ TÍNH NĂNG
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -6,14 +6,14 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
+-- 1. KHỞI TẠO HỆ THỐNG PHẦN TỬ ĐỒ HỌA GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV16"
+ScreenGui.Name = "ModMenuMobileGlitchV16_1"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. NÚT MỞ MENU TRÒN (O) - CỐ ĐỊNH PHÍA DƯỚI LOGO ROBLOX ĐỂ DỄ BẤM
+-- 2. NÚT NỔI O - ĐẶT DƯỚI LOGO ROBLOX ĐỂ KHÔNG BỊ KHUẤT
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 45, 0, 45)
@@ -30,7 +30,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG MENU CHÍNH
+-- 3. KHUNG BẢNG MENU CHÍNH CHỨA TẤT CẢ CHỨC NĂNG
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 220, 0, 390)
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V16"
+Title.Text = "Glitch Menu V16.1"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -67,7 +67,7 @@ MinimizeButton.Parent = MainFrame
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CẤU HÌNH VÒNG TRÒN FOV GỐC VÀ ĐỘ MƯỢT AIM
+-- CẤU HÌNH THÔNG SỐ VÒNG TRÒN FOV GỐC VÀ ĐỘ MƯỢT AIM
 local R = 130
 local AimActive = true
 local Smoothness = 0.12
@@ -83,7 +83,7 @@ Stroke.Color = Color3.new(0, 1, 0)
 Stroke.Thickness = 1
 Instance.new("UICorner", F).CornerRadius = UDim.new(1, 0)
 
--- 4. TÍNH NĂNG KÉO THẢ CHO MENU CHÍNH
+-- 4. TÍNH NĂNG DI CHUYỂN KHUNG MENU (KÉO THẢ TRÊN ĐIỆN THOẠI)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -106,7 +106,7 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- HÀM RAYCAST KIỂM TRA TẦM NHÌN (KHÔNG CHO AIM XUYÊN TƯỜNG/RÀO CẢN)
+-- HÀM KIỂM TRA CHƯỚNG NGẠI VẬT BẰNG RAYCAST (VISIBLE CHECK)
 local function isPlayerVisible(targetPart)
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
     local origin = Camera.CFrame.Position
@@ -125,7 +125,7 @@ local function isPlayerVisible(targetPart)
     return false
 end
 
--- HÀM LỌC MỤC TIÊU THOẢ MÃN ĐIỀU KIỆN TRONG VÒNG TRÒN FOV
+-- HÀM TÌM KIẾM ĐỐI THỦ GẦN TÂM NHẤT ĐỂ KHÓA NHẸ
 local function getClosestPlayerToCenter()
     local target = nil
     local maxDistance = R
@@ -147,7 +147,7 @@ local function getClosestPlayerToCenter()
     return target
 end
 
--- 5. QUẢN LÝ HỆ THỐNG ĐỒ HỌA DÂY TỤ TÂM VÀ KHUNG VUÔNG HITBOX CẦU VỒNG
+-- 5. HỆ THỐNG DÂY TỤ TÂM VÀ KHUNG VUÔNG HITBOX CẦU VỒNG (ESP)
 local VisualElements = {}
 
 local function clearVisuals()
@@ -167,7 +167,7 @@ local function updateVisuals()
                 local distanceFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
                 
                 if distanceFromCenter <= R then
-                    -- A. VẼ DÂY CẦU VỒNG XUẤT PHÁT TỪ GIỮA TÂM HÌNH TRÒN CHỈ ĐẾN ĐỐI THỦ
+                    -- KHỞI TẠO DÂY TỤ VỀ CHÍNH GIỮA TÂM VÒNG TRÒN FOV
                     local LineFrame = Instance.new("Frame")
                     LineFrame.Name = "CenterTracer"
                     LineFrame.BorderSizePixel = 0
@@ -184,7 +184,7 @@ local function updateVisuals()
                     
                     table.insert(VisualElements, LineFrame)
                     
-                    -- B. VẼ KHUNG VUÔNG HITBOX 2D MÀU CẦU VỒNG XUNG QUANH MỤC TIÊU
+                    -- KHỞI TẠO KHUNG VUÔNG HITBOX 2D BAO QUANH NGƯỜI CHƠI KHÁC
                     local BoxFrame = Instance.new("Frame")
                     BoxFrame.Name = "Hitbox2DBox"
                     BoxFrame.BackgroundTransparency = 1
@@ -210,7 +210,7 @@ local function updateVisuals()
     end
 end
 
--- Vòng lặp Render liên tục bám sát xử lý tọa độ màn hình và bám tâm mịn
+-- VÒNG LẶP RENDER CHÍNH - XỬ LÝ LIÊN TỤC ỔN ĐỊNH TOÀN BỘ CƠ CHẾ
 RunService.RenderStepped:Connect(function()
     F.Position = UDim2.new(0.5, 0, 0.5, 0)
     updateVisuals()
@@ -223,7 +223,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 6. HÀM TẠO THANH TRƯỢT (SLIDER)
+-- 6. HÀM TẠO CÁC THANH ĐIỀU CHỈNH SLIDER CỦA MENU
 local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, -20, 0, 20)
@@ -274,7 +274,7 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     end)
 end
 
--- 7. HÀM TẠO NÚT BẤM CHỨC NĂNG (BUTTON)
+-- 7. HÀM TẠO CÁC NÚT TÍNH NĂNG CHỨC NĂNG TRÊN KHUNG MENU
 local function createButton(name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
@@ -295,7 +295,7 @@ local function createButton(name, text, yOffset, callback)
     return Btn
 end
 
--- LOGIC ĐIỀU KHIỂN THÔNG SỐ NHÂN VẬT GỐC
+-- ĐIỀU KHIỂN GIÁ TRỊ GỐC CHO HỆ THỐNG NHÂN VẬT CHÍNH
 local currentSpeed = 16
 local currentJump = 50
 local function updateCharacter(char)
@@ -315,7 +315,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- TÍNH NĂNG XOAY VÒNG
+-- XOAY VÒNG TRÒN NHÂN VẬT (SPIN)
 local isSpinning = false
 local spinVelocity = nil
 local function toggleSpin(btn)
@@ -337,7 +337,7 @@ local function toggleSpin(btn)
     end
 end
 
--- TÍNH NĂNG NẰM SÀN LỖI
+-- NẰM SÀN TRƯỢT LỖI GÓC NHÌN
 local isLaidDown = false
 local function toggleLayDown(btn)
     isLaidDown = not isLaidDown
@@ -354,7 +354,7 @@ local function toggleLayDown(btn)
     end
 end
 
--- TÍNH NĂNG HITBOX ESP KHỐI ĐẶC 3D MÀU TRẮNG
+-- HITBOX ĐẶC 3D MÀU TRẮNG XUYÊN TƯỜNG
 local hitboxActive = false
 local espConnection = nil
 local function removeHitboxESP()
@@ -396,7 +396,7 @@ local function toggleHitboxESP(btn)
     end
 end
 
--- TÍNH NĂNG KILL AURA KIẾM PHÓNG TO TOÀN MAP
+-- KILL AURA VŨ KHÍ PHÓNG TO TOÀN MAP
 local hitboxSwordActive = false
 local swordConnection = nil
 local originalSizes = {}
@@ -441,7 +441,7 @@ local function toggleHitboxSword(btn)
     end
 end
 
--- TÍNH NĂNG TỐI ƯU HÓA ĐỒ HỌA BOOST FPS
+-- TỐI ƯU HÓA HỆ THỐNG GIẢM ĐỒ HỌA ĐỂ TĂNG FPS
 local boostLevel = 0
 local function toggleBoostFPS(btn)
     boostLevel = boostLevel + 1
@@ -491,4 +491,4 @@ createSlider("Jump", "Nhảy cao", 130, 50, 300, 50, function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 195, function() toggleSpin(MainFra
+createButton("SpinBtn", "B
