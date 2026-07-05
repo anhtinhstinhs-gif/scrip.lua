@@ -1,5 +1,5 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V11 (FIX LỖI ĐỨNG IM + MAX TẦM KIẾM)
--- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng, Nằm sàn, Hitbox ESP, Hitbox Kiếm Siêu Rộng, God Boost FPS
+-- MÃ KỊCH BẢN GIAO GIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V12 (KILL AURA TOÀN BẢN ĐỒ SIÊU BÁ ĐẠO)
+-- Chức năng: WalkSpeed, JumpPower, Infinite Jump, Xoay vòng, Nằm sàn, Hitbox ESP, Kill Aura Kiếm Toàn Bản Đồ, God Boost FPS
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV11"
+ScreenGui.Name = "ModMenuMobileGlitchV12"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V11"
+Title.Text = "Glitch Menu V12"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -263,13 +263,13 @@ local function toggleHitboxESP(btn)
 end
 
 -- =========================================================================
--- ĐÃ FIX LỖI ĐỨNG IM: TỐI ƯU COOLDOWN + TĂNG MAX HITBOX TẦM XA (60x60x60)
+-- NÚT 4 BÁ ĐẠO NHẤT: KILL AURA PHÓNG TO KIẾM TOÀN BẢN ĐỒ (5000 x 5000 x 5000)
 -- =========================================================================
 local hitboxSwordActive = false
 local swordConnection = nil
 local originalSizes = {}
 local lastAttackTime = 0
-local attackCooldown = 0.15 -- Khoảng nghỉ nhỏ giúp nhân vật di chuyển tự do mượt mà không đứng hình
+local attackCooldown = 0.15 -- Nhịp nghỉ nhỏ chuẩn xác để nhân vật di chuyển mượt mà không bị khựng lại
 
 local function resetSword()
     for tool, oldSize in pairs(originalSizes) do
@@ -284,7 +284,7 @@ end
 local function toggleHitboxSword(btn)
     hitboxSwordActive = not hitboxSwordActive
     if hitboxSwordActive then
-        btn.Text = "Hitbox Kiếm: ON"
+        btn.Text = "Kill Aura Toàn Map: ON"
         swordConnection = RunService.Heartbeat:Connect(function()
             local character = LocalPlayer.Character
             if not character then return end
@@ -292,11 +292,11 @@ local function toggleHitboxSword(btn)
             if tool and tool:FindFirstChild("Handle") then
                 if not originalSizes[tool] then originalSizes[tool] = tool.Handle.Size end
                 
-                -- Tăng tầm của cây kiếm lên mức tối đa cực đại để hạ gục diện rộng
-                tool.Handle.Size = Vector3.new(60, 60, 60)
-                tool.Handle.CanCollide = false
+                -- Đẩy kích thước hộp va chạm lên cực đại bao phủ toàn bộ bản đồ game
+                tool.Handle.Size = Vector3.new(5000, 5000, 5000)
+                tool.Handle.CanCollide = false -- Tắt va chạm để không bị kẹt hay văng khỏi bản đồ
                 
-                -- Cơ chế chém thông minh: có nhịp nghỉ để không làm đơ/đứng im nhân vật
+                -- Tự động vung kiếm chém liên tục theo thời gian thực mượt mà
                 local currentTime = tick()
                 if currentTime - lastAttackTime >= attackCooldown then
                     tool:Activate()
@@ -307,7 +307,7 @@ local function toggleHitboxSword(btn)
             end
         end)
     else
-        btn.Text = "Hitbox Kiếm: OFF"
+        btn.Text = "Kill Aura Toàn Map: OFF"
         if swordConnection then swordConnection:Disconnect() swordConnection = nil end
         resetSword()
     end
@@ -342,7 +342,7 @@ local function toggleBoostFPS(btn)
     end
 end
 
--- 8. KHỞI TẠO CÁC SLIDER VÀ NÚT BẤM V11
+-- 8. KHỞI TẠO CÁC SLIDER VÀ NÚT BẤM V12
 createSlider("Speed", "Tốc độ", 40, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
@@ -356,7 +356,7 @@ end)
 createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 160, function() toggleSpin(MainFrame.SpinBtn) end)
 createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 195, function() toggleLayDown(MainFrame.LayBtn) end)
 createButton("EspBtn", "Bật/Tắt Hitbox trắng", 230, function() toggleHitboxESP(MainFrame.EspBtn) end)
-createButton("SwordBtn", "Hitbox Kiếm: OFF", 265, function() toggleHitboxSword(MainFrame.SwordBtn) end)
+createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 265, function() toggleHitboxSword(MainFrame.SwordBtn) end)
 createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 300, function() toggleBoostFPS(MainFrame.BoostBtn) end)
 
 -- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW LOOP)
