@@ -1,4 +1,4 @@
--- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V14 (RAINBOW TRACERS + VISIBLE CHECK AIM)
+-- MÃ KỊCH BẢN GIAO DIỆN ĐIỀU KHIỂN (GUI) - PHIÊN BẢN V15 (SMOOTH AIM + CENTER TRACERS)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -8,20 +8,20 @@ local Camera = workspace.CurrentCamera
 
 -- 1. TẠO GIAO DIỆN CHÍNH (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV14"
+ScreenGui.Name = "ModMenuMobileGlitchV15"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. NÚT MỞ MENU TRÒN (O)
+-- 2. NÚT MỞ MENU TRÒN (O) - ĐÃ DỊCH XUỐNG DƯỚI LOGO ROBLOX
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
-OpenButton.Size = UDim2.new(0, 50, 0, 50)
-OpenButton.Position = UDim2.new(0, 10, 0, 10)
+OpenButton.Size = UDim2.new(0, 45, 0, 45)
+OpenButton.Position = UDim2.new(0, 15, 0, 60) -- Vị trí dưới nút hệ thống của Roblox
 OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 OpenButton.Text = "O"
 OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenButton.TextSize = 24
+OpenButton.TextSize = 22
 OpenButton.Font = Enum.Font.SourceSansBold
 OpenButton.Visible = false
 OpenButton.Parent = ScreenGui
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V14"
+Title.Text = "Glitch Menu V15"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -67,9 +67,10 @@ MinimizeButton.Parent = MainFrame
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- KHỞI TẠO VÒNG TRÒN FOV GỐC
+-- CẤU HÌNH VÒNG TRÒN FOV GỐC
 local R = 130
 local AimActive = true
+local Smoothness = 0.15 -- Hệ số làm mượt camera (khóa nhẹ)
 
 local F = Instance.new("Frame", ScreenGui)
 F.Name = "FOV_Circle"
@@ -105,7 +106,7 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- HÀM KIỂM TRA NGƯỜI CHƠI TRƯỚC MẶT KHÔNG BỊ CẢN (RAYCAST VISIBLE CHECK)
+-- HÀM KIỂM TRA NGƯỜI CHƠI TRƯỚC MẶT KHÔNG BỊ CẢN TRỞ VẬT LÝ
 local function isPlayerVisible(targetPart)
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
     
@@ -120,7 +121,6 @@ local function isPlayerVisible(targetPart)
     local result = workspace:Raycast(origin, direction, raycastParams)
     
     if result then
-        -- Nếu tia bắn trúng một bộ phận thuộc nhân vật mục tiêu thì coi như không bị rào cản
         if result.Instance:IsDescendantOf(targetPart.Parent) then
             return true
         end
@@ -128,7 +128,7 @@ local function isPlayerVisible(targetPart)
     return false
 end
 
--- HÀM TÌM MỤC TIÊU THOẢ MÃN ĐIỀU KIỆN TRƯỚC MẶT + KHÔNG VẬT CẢN
+-- HÀM TÌM MỤC TIÊU GẦN TÂM NHẤT TRONG PHẠM VI FOV TRÒN
 local function getClosestPlayerToCenter()
     local target = nil
     local maxDistance = R
@@ -139,7 +139,6 @@ local function getClosestPlayerToCenter()
                 local mousePos = UserInputService:GetMouseLocation()
                 local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
                 if distance < maxDistance then
-                    -- Kiểm tra xem có bị rào cản / tường che khuất không
                     if isPlayerVisible(plr.Character.HumanoidRootPart) then
                         target = plr.Character.HumanoidRootPart
                         maxDistance = distance
@@ -151,7 +150,7 @@ local function getClosestPlayerToCenter()
     return target
 end
 
--- 5. QUẢN LÝ DÂY CẦU VỒNG (RAINBOW SNAPLINES) THEO ẢNH SƠ ĐỒ
+-- 5. QUẢN LÝ DÂY CẦU VỒNG XUẤT PHÁT TỪ GIỮA HÌNH TRÒN FOV
 local ActiveTracers = {}
 
 local function clearTracers()
@@ -162,27 +161,25 @@ local function clearTracers()
 end
 
 local function updateTracers()
-    -- Xoá toàn bộ dây cũ để vẽ lại trạng thái số lượng người chơi theo thời gian thực (tự động -1 khi chết)
     clearTracers()
     
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
             local screenPos, onScreen = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
             if onScreen then
-                -- Tạo một Frame vẽ đường dây mảnh giả lập từ cạnh đáy màn hình lên vị trí người chơi
                 local LineFrame = Instance.new("Frame")
-                LineFrame.Name = "TracerLine"
+                LineFrame.Name = "CenterTracerLine"
                 LineFrame.BorderSizePixel = 0
-                LineFrame.BackgroundColor3 = GlobalRainbowColor -- Áp dụng màu cầu vồng đồng bộ
+                LineFrame.BackgroundColor3 = GlobalRainbowColor
                 LineFrame.Parent = ScreenGui
                 
-                -- Tính toán toạ độ từ điểm giữa đáy màn hình lên tâm nhân vật đối phương
-                local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                -- Đổi gốc tọa độ bắt đầu từ chính giữa tâm hình tròn FOV (Camera Viewport Center)
+                local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                 local endPos = Vector2.new(screenPos.X, screenPos.Y)
                 local distance = (endPos - startPos).Magnitude
                 local angle = math.deg(math.atan2(endPos.Y - startPos.Y, endPos.X - startPos.X))
                 
-                LineFrame.Size = UDim2.new(0, distance, 0, 1.5) -- Độ dày của dây trắng/cầu vồng
+                LineFrame.Size = UDim2.new(0, distance, 0, 1.5)
                 LineFrame.AnchorPoint = Vector2.new(0, 0.5)
                 LineFrame.Position = UDim2.new(0, startPos.X, 0, startPos.Y)
                 LineFrame.Rotation = angle
@@ -193,18 +190,18 @@ local function updateTracers()
     end
 end
 
--- Vòng lặp Render chính cho Aim Lock và Dây Cầu Vồng
+-- Vòng lặp đồng bộ khóa mục tiêu mượt và cập nhật tọa độ hình ảnh dây chỉ hướng
 RunService.RenderStepped:Connect(function()
     F.Position = UDim2.new(0.5, 0, 0.5, 0)
     
-    -- Tự động vẽ và cập nhật dây cầu vồng chỉ hướng
     updateTracers()
     
-    -- Xử lý Aim khóa tâm thông minh có kiểm tra vật cản
     if AimActive then
         local target = getClosestPlayerToCenter()
         if target then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            -- Sử dụng CFrame:Lerp để tạo cơ chế khóa tâm màn hình nhẹ, giảm quán tính giật góc quay
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, Smoothness)
         end
     end
 end)
@@ -450,16 +447,16 @@ local function toggleBoostFPS(btn)
     end
 end
 
--- BỐ CỤC ĐIỀU KHIỂN MENU MENU V14
-local AimBtn = createButton("AimBtn", "AIM (Visible Check): ON", 35, function()
+-- 8. THIẾT KẾ CẤU TRÚC DANH MỤC ĐIỀU KHIỂN TRÊN MENU CHÍNH
+local AimBtn = createButton("AimBtn", "AIM (Smooth & Visible): ON", 35, function()
     AimActive = not AimActive
     if AimActive then
-        MainFrame.AimBtn.Text = "AIM (Visible Check): ON"
+        MainFrame.AimBtn.Text = "AIM (Smooth & Visible): ON"
         MainFrame.AimBtn.TextColor3 = Color3.new(0, 1, 0)
         Stroke.Color = Color3.new(0, 1, 0)
         F.Visible = true
     else
-        MainFrame.AimBtn.Text = "AIM (Visible Check): OFF"
+        MainFrame.AimBtn.Text = "AIM (Smooth & Visible): OFF"
         MainFrame.AimBtn.TextColor3 = Color3.new(1, 0, 0)
         Stroke.Color = Color3.new(1, 0, 0)
         F.Visible = false
@@ -483,7 +480,7 @@ createButton("EspBtn", "Bật/Tắt Hitbox trắng", 265, function() toggleHitbo
 createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 300, function() toggleHitboxSword(MainFrame.SwordBtn) end)
 createButton("BoostBtn", "God Boost FPS (Click để Nhân)", 335, function() toggleBoostFPS(MainFrame.BoostBtn) end)
 
--- 9. VÒNG LẶP ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ TOÀN MENU VÀ DÂY TRACERS
+-- 9. VÒNG LẶP ĐỒI MÀU CẦU VỒNG ĐỒNG BỘ TOÀN MENU VÀ DÂY TRACERS
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
