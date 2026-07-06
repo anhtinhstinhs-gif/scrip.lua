@@ -1,4 +1,4 @@
--- MÃ NGUỒN PHIÊN BẢN V16.5 - AIM LOCK CHẾT HEAD 360° + CHECK TƯỜNG + FOV CẦU VỒNG
+-- MÃ NGUỒN PHIÊN BẢN V16.6 - MENU CHỮ NHẬT - GLITCH THẢM HỌA XOAY BLOCK 360°
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -8,7 +8,7 @@ local Camera = workspace.CurrentCamera
 
 -- 1. KHỞI TẠO HỆ THỐNG PHẦN TỬ ĐỒ HỌA GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV16_5"
+ScreenGui.Name = "ModMenuMobileGlitchV16_6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -30,59 +30,102 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG BẢNG MENU CHÍNH CHỨA TẤT CẢ CHỨC NĂNG
+-- 3. KHUNG BẢNG MENU CHÍNH - CHUYỂN THÀNH HÌNH CHỮ NHẬT RỘNG NẰM NGANG
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 415)
-MainFrame.Position = UDim2.new(0.5, -110, 0.5, -207)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Size = UDim2.new(0, 430, 0, 240) -- Kích thước hình chữ nhật nằm ngang
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -120)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0, 150, 0, 30)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V16.5"
+Title.Size = UDim2.new(0, 250, 0, 35)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Text = "Glitch Disaster Menu V16.6 (Chữ Nhật)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
+Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundTransparency = 1
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
 local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
-MinimizeButton.Position = UDim2.new(1, -35, 0, 0)
+MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
+MinimizeButton.Position = UDim2.new(1, -40, 0, 0)
 MinimizeButton.BackgroundTransparency = 1
 MinimizeButton.Text = "—"
-MinimizeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
-MinimizeButton.TextSize = 18
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+MinimizeButton.TextSize = 20
 MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.Parent = MainFrame
+
+-- Chia Menu làm 2 Cột (Trái / Phải) bên trong khung Chữ nhật để xếp nút gọn gàng
+local LeftColumn = Instance.new("Frame", MainFrame)
+LeftColumn.Size = UDim2.new(0.5, -15, 1, -45)
+LeftColumn.Position = UDim2.new(0, 10, 0, 40)
+LeftColumn.BackgroundTransparency = 1
+
+local RightColumn = Instance.new("Frame", MainFrame)
+RightColumn.Size = UDim2.new(0.5, -15, 1, -45)
+RightColumn.Position = UDim2.new(0.5, 5, 0, 40)
+RightColumn.BackgroundTransparency = 1
 
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CẤU HÌNH THÔNG SỐ VÒNG TRÒN FOV GỐC
-local R = 130
-local AimActive = true
+-- CẤU HÌNH BIẾN TÍNH NĂNG MỚI: GLITCH THẢM HỌA XOAY BLOCK
+local GlitchDisasterActive = false
+local BlockDistance = 30 -- Khoảng cách xa gần của block xoay quanh bạn
+local AngleOffset = 0
 
--- KHỞI TẠO VÒNG TRÒN FOV CẦU VỒNG TẠI TÂM MÀN HÌNH
-local F = Instance.new("Frame", ScreenGui)
-F.Name = "FOV_Circle"
-F.AnchorPoint = Vector2.new(0.5, 0.5)
-F.Position = UDim2.new(0.5, 0, 0.5, 0)
-F.Size = UDim2.new(0, R * 2, 0, R * 2)
-F.BackgroundTransparency = 1
-local Stroke = Instance.new("UIStroke", F)
-Stroke.Thickness = 1.5
-Instance.new("UICorner", F).CornerRadius = UDim.new(1, 0)
+-- HÀM TÌM VÀ ĐIỀU KHIỂN CÁC BLOCK TRONG GAME XOAY QUANH BẠN
+local function getDisasterBlocks()
+    local blocks = {}
+    -- Quét cấu trúc Map của game Natural Disaster Survival
+    local struct = workspace:FindFirstChild("Structure") or workspace:FindFirstChild("Island")
+    if struct then
+        for _, v in ipairs(struct:GetDescendants()) do
+            if v:IsA("BasePart") and not v.Parent:IsA("Player") and v.Name ~= "Baseplate" then
+                table.insert(blocks, v)
+            end
+        end
+    end
+    return blocks
+end
 
--- 4. TÍNH NĂNG DI CHUYỂN KHUNG MENU (KÉO THẢ TRÊN ĐIỆN THOẠI)
+-- VÒNG LẶP RENDER LIÊN TỤC ĐỂ ĐIỀU KHIỂN CÁC BLOCK CHẠY THEO VÒNG TRÒN
+RunService.Heartbeat:Connect(function(deltaTime)
+    if GlitchDisasterActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local centerPos = LocalPlayer.Character.HumanoidRootPart.Position
+        local blocks = getDisasterBlocks()
+        
+        AngleOffset = AngleOffset + (deltaTime * 45) -- Tốc độ xoay vòng tròn
+        
+        for i, block in ipairs(blocks) do
+            if block:IsA("BasePart") then
+                -- Bẻ gãy liên kết cố định để block có thể tự do di chuyển tự do
+                block.Anchored = false
+                block.CanCollide = false
+                
+                -- Tính toán vị trí hình tròn xung quanh người chơi dựa theo thanh kéo khoảng cách
+                local angle = math.rad((i * (360 / #blocks)) + AngleOffset)
+                local targetX = centerPos.X + math.cos(angle) * BlockDistance
+                local targetZ = centerPos.Z + math.sin(angle) * BlockDistance
+                local targetY = centerPos.Y + (math.sin(math.rad(i + AngleOffset)) * 5) -- Tạo hiệu ứng dập dềnh sóng
+                
+                -- Di chuyển tức thời khối block đến vị trí hình tròn chỉ định
+                block.CFrame = CFrame.new(Vector3.new(targetX, targetY, targetZ))
+            end
+        end
+    end
+end)
+
+-- 4. TÍNH NĂNG DI CHUYỂN KHUNG MENU CHỮ NHẬT
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -105,82 +148,27 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- HÀM KIỂM TRA CHƯỚNG NGẠI VẬT BẰNG RAYCAST (TRÁNH KHÓA QUA TƯỜNG / BLOCK)
-local function isPlayerVisible(targetPart)
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return false end
-    local origin = Camera.CFrame.Position
-    local direction = (targetPart.Position - origin)
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, ScreenGui}
-    raycastParams.IgnoreWater = true
-    
-    local result = workspace:Raycast(origin, direction, raycastParams)
-    if result then
-        if result.Instance:IsDescendantOf(targetPart.Parent) then
-            return true
-        end
-    end
-    return false
-end
-
--- HÀM TÌM KIẾM ĐỐI THỦ GẦN TÂM NHẤT VÀ KIỂM TRA FOV
-local function getClosestPlayerToCenter()
-    local target = nil
-    local maxDistance = R
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-            local pos, onScreen = Camera:WorldToViewportPoint(plr.Character.Head.Position)
-            if onScreen then
-                local centerScreen = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                local distance = (Vector2.new(pos.X, pos.Y) - centerScreen).Magnitude
-                if distance < maxDistance then
-                    -- Kiểm tra xem trước mặt có bị cản bởi tường hoặc block không
-                    if isPlayerVisible(plr.Character.Head) then
-                        target = plr.Character.Head
-                        maxDistance = distance
-                    end
-                end
-            end
-        end
-    end
-    return target
-end
-
--- VÒNG LẶP RENDER CHÍNH - THAY ĐỔI ĐỂ KHÓA CHẾT CỨNG (KHÔNG LERP)
-RunService.RenderStepped:Connect(function()
-    F.Position = UDim2.new(0.5, 0, 0.5, 0)
-    Stroke.Color = GlobalRainbowColor -- Cập nhật màu cầu vồng cho vòng tròn FOV liên tục
-    if AimActive then
-        local target = getClosestPlayerToCenter()
-        if target then
-            -- Gán thẳng góc nhìn trùng khít hoàn toàn vào vị trí Đầu (Head) của đối thủ
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-        end
-    end
-end)
-
--- 5. HÀM TẠO CÁC THANH ĐIỀU CHỈNH SLIDER CỦA MENU
-local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, callback)
+-- 5. HÀM TẠO CÁC THANH ĐIỀU CHỈNH SLIDER CHO MENU CHỮ NHẬT
+local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, -20, 0, 20)
-    Label.Position = UDim2.new(0, 10, 0, yOffset)
+    Label.Size = UDim2.new(1, 0, 0, 18)
+    Label.Position = UDim2.new(0, 0, 0, yOffset)
     Label.Text = text .. ": " .. defaultVal
-    Label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    Label.TextSize = 14
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+    Label.TextSize = 13
     Label.BackgroundTransparency = 1
     Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = MainFrame
+    Label.Parent = parentCol
 
     local SliderBar = Instance.new("Frame")
-    SliderBar.Size = UDim2.new(1, -20, 0, 10)
-    SliderBar.Position = UDim2.new(0, 10, 0, yOffset + 22)
+    SliderBar.Size = UDim2.new(1, 0, 0, 8)
+    SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 20)
     SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    SliderBar.Parent = MainFrame
+    SliderBar.Parent = parentCol
 
     local SliderBtn = Instance.new("TextButton")
-    SliderBtn.Size = UDim2.new(0, 20, 0, 20)
-    SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 180, 0, -5)
+    SliderBtn.Size = UDim2.new(0, 16, 0, 16)
+    SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4)
     SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     SliderBtn.Text = ""
     SliderBtn.Parent = SliderBar
@@ -203,7 +191,7 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
             local barStart = SliderBar.AbsolutePosition.X
             local barWidth = SliderBar.AbsoluteSize.X
             local percentage = math.clamp((mousePos - barStart) / barWidth, 0, 1)
-            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 20), 0, -5)
+            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 16), 0, -4)
             local calculatedValue = math.floor(minVal + (percentage * (maxVal - minVal)))
             Label.Text = text .. ": " .. calculatedValue
             callback(calculatedValue)
@@ -211,18 +199,18 @@ local function createSlider(name, text, yOffset, minVal, maxVal, defaultVal, cal
     end)
 end
 
--- 6. HÀM TẠO CÁC NÚT TÍNH NĂNG CHỨC NĂNG TRÊN KHUNG MENU
-local function createButton(name, text, yOffset, callback)
+-- 6. HÀM TẠO CÁC NÚT TÍNH NĂNG CHỨC NĂNG CHO MENU CHỮ NHẬT
+local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
-    Btn.Size = UDim2.new(1, -20, 0, 26)
-    Btn.Position = UDim2.new(0, 10, 0, yOffset)
+    Btn.Size = UDim2.new(1, 0, 0, 26)
+    Btn.Position = UDim2.new(0, 0, 0, yOffset)
     Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
     Btn.Text = text
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     Btn.TextSize = 13
     Btn.Font = Enum.Font.SourceSansBold
-    Btn.Parent = MainFrame
+    Btn.Parent = parentCol
 
     local BtnCorner = Instance.new("UICorner")
     BtnCorner.CornerRadius = UDim.new(0, 5)
@@ -232,7 +220,7 @@ local function createButton(name, text, yOffset, callback)
     return Btn
 end
 
--- ĐIỀU KHIỂN GIÁ TRỊ GỐC CHO HỆ THỐNG NHÂN VẬT CHÍNH
+-- TÍNH NĂNG PHỤ CHO NHÂN VẬT
 local currentSpeed = 16
 local currentJump = 50
 local function updateCharacter(char)
@@ -244,178 +232,83 @@ local function updateCharacter(char)
     end
 end
 LocalPlayer.CharacterAdded:Connect(updateCharacter)
-if LocalPlayer.Character then updateCharacter(LocalPlayer.Character) end
 
-UserInputService.JumpRequest:Connect(function()
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-    end
-end)
+-- =====================================================================
+-- 7. THIẾT KẾ PHÂN CỘT MENU CHỮ NHẬT (XẾP TIỆN LỢI TRÊN MOBILE)
 
--- XOAY VÒNG TRÒN NHÂN VẬT (SPIN)
-local isSpinning = false
-local spinVelocity = nil
-local function toggleSpin(btn)
-    isSpinning = not isSpinning
-    local character = LocalPlayer.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-    if isSpinning and hrp then
-        btn.Text = "Xoay Vòng: ON"
-        spinVelocity = Instance.new("BodyAngularVelocity")
-        spinVelocity.Name = "SpinGlitchForce"
-        spinVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
-        spinVelocity.AngularVelocity = Vector3.new(0, 60, 0)
-        spinVelocity.Parent = hrp
-    else
-        btn.Text = "Bật/Tắt xoay vòng tròn"
-        if hrp and hrp:FindFirstChild("SpinGlitchForce") then hrp.SpinGlitchForce:Destroy() end
-        if spinVelocity then spinVelocity:Destroy() spinVelocity = nil end
-        isSpinning = false
-    end
-end
-
--- NẰM SÀN TRƯỢT LỖI GÓC NHÌN
-local isLaidDown = false
-local function toggleLayDown(btn)
-    isLaidDown = not isLaidDown
-    local character = LocalPlayer.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        if isLaidDown then
-            btn.Text = "Nằm Sàn: ON"
-            humanoid.PlatformStand = true
-        else
-            btn.Text = "Bật/Tắt nằm sàn lỗi"
-            humanoid.PlatformStand = false
-        end
-    end
-end
-
--- HITBOX ĐẶC 3D MÀU TRẮNG XUYÊN TƯỜNG
-local hitboxActive = false
-local espConnection = nil
-local function removeHitboxESP()
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character then
-            for _, v in ipairs(plr.Character:GetChildren()) do
-                if v:IsA("BasePart") and v:FindFirstChild("HitboxESPMobile") then v.HitboxESPMobile:Destroy() end
-            end
-        end
-    end
-end
-local function toggleHitboxESP(btn)
-    hitboxActive = not hitboxActive
-    if hitboxActive then
-        btn.Text = "Hitbox Trắng 3D: ON"
-        espConnection = RunService.Heartbeat:Connect(function()
-            for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character then
-                    for _, v in ipairs(plr.Character:GetChildren()) do
-                        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" and not v:FindFirstChild("HitboxESPMobile") then
-                            local box = Instance.new("BoxHandleAdornment")
-                            box.Name = "HitboxESPMobile"
-                            box.Size = v.Size + Vector3.new(0.05, 0.05, 0.05)
-                            box.AlwaysOnTop = true
-                            box.ZIndex = 5
-                            box.Color3 = Color3.fromRGB(255, 255, 255)
-                            box.Transparency = 0.4
-                            box.Adornee = v
-                            box.Parent = v
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        btn.Text = "Bật/Tắt Hitbox trắng"
-        if espConnection then espConnection:Disconnect() espConnection = nil end
-        removeHitboxESP()
-    end
-end
-
--- KILL AURA VŨ KHÍ PHÓNG TO TOÀN MAP
-local hitboxSwordActive = false
-local swordConnection = nil
-local originalSizes = {}
-local lastAttackTime = 0
-local attackCooldown = 0.15
-
-local function resetSword()
-    for tool, oldSize in pairs(originalSizes) do
-        if tool and tool.Parent and tool:FindFirstChild("Handle") then
-            tool.Handle.Size = oldSize
-            tool.Handle.CanCollide = true
-        end
-    end
-    originalSizes = {}
-end
-
-local function toggleHitboxSword(btn)
-    hitboxSwordActive = not hitboxSwordActive
-    if hitboxSwordActive then
-        btn.Text = "Kill Aura Toàn Map: ON"
-        swordConnection = RunService.Heartbeat:Connect(function()
-            local character = LocalPlayer.Character
-            if not character then return end
-            local tool = character:FindFirstChildOfClass("Tool")
-            if tool and tool:FindFirstChild("Handle") then
-                if not originalSizes[tool] then originalSizes[tool] = tool.Handle.Size end
-                tool.Handle.Size = Vector3.new(5000, 5000, 5000)
-                tool.Handle.CanCollide = false
-                local currentTime = tick()
-                if currentTime - lastAttackTime >= attackCooldown then
-                    tool:Activate()
-                    lastAttackTime = currentTime
-                end
-            else
-                resetSword()
-            end
-        end)
-    else
-        btn.Text = "Kill Aura Toàn Map: OFF"
-        if swordConnection then swordConnection:Disconnect() swordConnection = nil end
-        resetSword()
-    end
-end
-
--- 7. THIẾT KẾ CẤU TRÚC DANH MỤC TRÊN KHUNG MENU
-
--- NÚT BẬT/TẮT TÍNH NĂNG AIM KHÓA CHẾT ĐẦU NGƯỜI CHƠI KHÁC
-local AimBtn = createButton("AimBtn", "AIM (Lock Head): ON", 35, function()
-    AimActive = not AimActive
-    if AimActive then
-        MainFrame.AimBtn.Text = "AIM (Lock Head): ON"
-        MainFrame.AimBtn.TextColor3 = Color3.new(0, 1, 0)
-        F.Visible = true
-    else
-        MainFrame.AimBtn.Text = "AIM (Lock Head): OFF"
-        MainFrame.AimBtn.TextColor3 = Color3.new(1, 0, 0)
-        F.Visible = false
-    end
-end)
-AimBtn.TextColor3 = Color3.new(0, 1, 0)
-
--- THANH KÉO SLIDER ĐIỀU CHỈNH KÍCH THƯỚC VÒNG TRÒN FOV CẦU VỒNG
-createSlider("FOVSize", "Kích thước FOV tâm", 75, 30, 500, 130, function(val)
-    R = val
-    F.Size = UDim2.new(0, val * 2, 0, val * 2)
-end)
-
-createSlider("Speed", "Tốc độ di chuyển", 130, 16, 200, 16, function(val)
+-- --- CỘT TRÁI: ĐIỀU KHIỂN NHÂN VẬT & KHOẢNG CÁCH THẢM HỌA ---
+createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
-createSlider("Jump", "Nhảy cao gốc", 185, 50, 300, 50, function(val)
+createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
     currentJump = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createButton("SpinBtn", "Bật/Tắt xoay vòng tròn", 245, function() toggleSpin(MainFrame.SpinBtn) end)
-createButton("LayBtn", "Bật/Tắt nằm sàn lỗi", 280, function() toggleLayDown(MainFrame.LayBtn) end)
-createButton("EspBtn", "Bật/Tắt Hitbox trắng", 315, function() toggleHitboxESP(MainFrame.EspBtn) end)
-createButton("SwordBtn", "Kill Aura Toàn Map: OFF", 350, function() toggleHitboxSword(MainFrame.SwordBtn) end)
+-- THANH KÉO SLIDER CHO PHÉP CHỈNH BLOCK THẢM HỌA BAY XA HOẶC LẠI GẦN
+createSlider(LeftColumn, "Khoảng cách Block", 90, 5, 150, 30, function(val)
+    BlockDistance = val
+end)
 
+-- --- CỘT PHẢI: BẬT/TẮT TÍNH NĂNG MỚI & GLITCH CŨ ---
+
+-- NÚT BẬT TẮT CHÍNH CHO TÍNH NĂNG BAY XOAY TRÒN BLOCK THẢM HỌA XUNG QUANH
+local DisasterBtn = createButton(RightColumn, "DisasterBtn", "Glitch Thảm Họa: OFF", 0, function()
+    GlitchDisasterActive = not GlitchDisasterActive
+    if GlitchDisasterActive then
+        RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: HOẠT ĐỘNG"
+        RightColumn.DisasterBtn.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: OFF"
+        RightColumn.DisasterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end)
+
+createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if hrp:FindFirstChild("SpinGlitchForce") then hrp.SpinGlitchForce:Destroy() else
+            local spin = Instance.new("BodyAngularVelocity", hrp)
+            spin.Name = "SpinGlitchForce"
+            spin.MaxTorque = Vector3.new(0, math.huge, 0)
+            spin.AngularVelocity = Vector3.new(0, 60, 0)
+        end
+    end
+end)
+
+createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70, function()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            for _, v in ipairs(plr.Character:GetChildren()) do
+                if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                    if v:FindFirstChild("HitboxESPMobile") then v.HitboxESPMobile:Destroy() else
+                        local box = Instance.new("BoxHandleAdornment", v)
+                        box.Name = "HitboxESPMobile"
+                        box.Size = v.Size + Vector3.new(0.05, 0.05, 0.05)
+                        box.AlwaysOnTop = true
+                        box.Color3 = Color3.fromRGB(255, 255, 255)
+                        box.Transparency = 0.4
+                        box.Adornee = v
+                    end
+                end
+            end
+        end
+    end
+end)
+
+createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 105, function()
+    local char = LocalPlayer.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    if tool and tool:FindFirstChild("Handle") then
+        tool.Handle.Size = (tool.Handle.Size.X < 100) and Vector3.new(5000, 5000, 5000) or Vector3.new(1,1,1)
+        tool.Handle.CanCollide = false
+    end
+end)
+
+-- =====================================================================
 -- 8. VÒNG LẶP ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ TOÀN HỆ THỐNG ĐỒ HỌA
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
