@@ -1,13 +1,13 @@
--- MÃ NGUỒN PHIÊN BẢN V17.5 - FIX LỖI ĐỒNG BỘ SERVER - XOAY BLOCK NHƯ CON QUAY (NGƯỜI KHÁC PHẢI THẤY)
+-- MÃ NGUỒN PHIÊN BẢN V18.0 - MENU CHỮ NHẬT CẦU VỒNG - SIÊU TỐI ƯU FPS THEO CẤP SỐ NHÂN
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
 -- 1. KHỞI TẠO GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV17_5"
+ScreenGui.Name = "ModMenuMobileFPS_V18"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -29,7 +29,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG CHỮ NHẬT NẰM NGANG
+-- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT RỘNG NẰM NGANG
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 430, 0, 240)
@@ -45,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Glitch Con Quay V17.5"
+Title.Text = "Super FPS Boost Menu V18.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -76,68 +76,62 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- KHỞI TẠO BIẾN
-local GlitchDisasterActive = false
+-- KHỞI TẠO BIẾN TÍNH NĂNG
 local SpinActive = false
 local HitboxEspActive = false
 local KillAuraActive = false
 
-local BlockDistance = 30
-local AngleOffset = 0
+local OptimizeLevel = 0 -- Cấp độ giảm đồ họa (Cấp số nhân)
 local currentSpeed = 16
 local currentJump = 50
 
--- QUÉT CÁC KHỐI BLOCK TRONG MAP
-local function getDisasterBlocks()
-    local blocks = {}
-    local struct = workspace:FindFirstChild("Structure") or workspace:FindFirstChild("Island") or workspace:FindFirstChild("Map")
-    if struct then
-        for _, v in ipairs(struct:GetDescendants()) do
-            if v:IsA("BasePart") and not v.Parent:IsA("Player") and v.Name ~= "Baseplate" then
-                table.insert(blocks, v)
+-- Mở khóa giới hạn FPS của game lên mức tối đa
+if setfpscap then setfpscap(999) end
+
+-- 2. HÀM SIÊU TỐI ƯU ĐỒ HỌA - TĂNG FPS THEO CẤP SỐ NHÂN
+local function boostFPSSystem()
+    OptimizeLevel = OptimizeLevel + 1
+    
+    -- Mức 1: Giảm cơ bản thiết lập ánh sáng toàn cục
+    if OptimizeLevel >= 1 then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        for _, v in ipairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = false
             end
         end
     end
-    return blocks
+    
+    -- Mức 2 (Cấp số nhân): Xóa Texture, giảm chi tiết vật thể trong Workspace
+    if OptimizeLevel >= 2 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Texture") or v:IsA("Decal") then
+                v:Destroy() -- Xóa decal dán tường để nhẹ ram
+            elseif v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic -- Ép tất cả thành nhựa trơn cực nhẹ
+                v.Reflectance = 0
+            end
+        end
+    end
+    
+    -- Mức 3 (Cấp số tối đa): Tắt toàn bộ hiệu ứng hạt, khói lửa, hoạt ảnh hoạt họa động
+    if OptimizeLevel >= 3 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Trail") or v:IsA("Beam") then
+                v.Enabled = false
+            elseif v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+                v:Destroy() -- Xóa quần áo nhân vật giảm tải render đồ họa đồ chơi
+            end
+        end
+    end
+    
+    -- Cập nhật chữ trên nút bấm để theo dõi cấp độ
+    RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- VÒNG LẶP ĐỒNG BỘ VẬT LÝ MẠNG TÁC ĐỘNG TOÀN SERVER (50 TICK GIỚI HẠN)
-RunService.Heartbeat:Connect(function(deltaTime)
-    if GlitchDisasterActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local centerPos = LocalPlayer.Character.HumanoidRootPart.Position
-        local blocks = getDisasterBlocks()
-        
-        AngleOffset = AngleOffset + (deltaTime * 90) -- Tăng tốc độ quay giống như con quay
-        
-        local maxBlocks = math.min(#blocks, 50)
-        
-        for i = 1, maxBlocks do
-            local block = blocks[i]
-            if block and block:IsA("BasePart") then
-                -- CRITICAL FIX: Tước quyền neo và mở va chạm để kích hoạt mạng phân phối vật lý (Replication)
-                block.Anchored = false
-                block.CanCollide = true -- Để va chạm bật người chơi khác văng ra ngoài
-                
-                -- Tính toán vị trí quỹ đạo vòng tròn
-                local angle = math.rad((i * (360 / maxBlocks)) + AngleOffset)
-                local targetX = centerPos.X + math.cos(angle) * BlockDistance
-                local targetZ = centerPos.Z + math.sin(angle) * BlockDistance
-                local targetY = centerPos.Y + 2 -- Độ cao vừa tầm người
-                
-                local targetPosition = Vector3.new(targetX, targetY, targetZ)
-                
-                -- THAY THẾ CFRAME BẰNG VELOCITY (VẬN TỐC THỰC): Khiến server bắt buộc đồng bộ hình ảnh sang máy người khác
-                local velocityVector = (targetPosition - block.Position) * 45
-                block.Velocity = velocityVector
-                
-                -- Tạo hiệu ứng tự xoay tròn của bản thân khối block giống con quay
-                block.RotVelocity = Vector3.new(0, 50, 0)
-            end
-        end
-    end
-end)
-
--- 4. KÉO THẢ DI CHUYỂN MENU
+-- 3. KÉO THẢ DI CHUYỂN MENU
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -160,7 +154,7 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- 5. HÀM TẠO THANH KÉO SLIDER
+-- 4. HÀM TẠO THANH KÉO SLIDER
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, 0, 0, 18)
@@ -211,7 +205,7 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
     end)
 end
 
--- 6. HÀM TẠO NÚT TÍNH NĂNG
+-- 5. HÀM TẠO NÚT TÍNH NĂNG CHỨC NĂNG
 local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
@@ -241,56 +235,34 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- 7. SẮP XẾP BẢNG CHỨC NĂNG CỘT TRÁI VÀ CỘT PHẢI
+-- =====================================================================
+-- 6. PHÂN CHIA NÚT LÊN MENU CHỮ NHẬT 
+
+-- --- CỘT TRÁI: SLIDER ĐIỀU KHIỂN CHỈ SỐ NHÂN VẬT ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
-    if GlitchDisasterActive then return end
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
 createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
-    if GlitchDisasterActive then return end
     currentJump = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createSlider(LeftColumn, "Khoảng cách Block", 90, 5, 150, 30, function(val)
-    BlockDistance = val
-end)
+-- --- CỘT PHẢI: NÚT TÍNH NĂNG CHÍNH MỚI & CŨ ---
 
--- NÚT BẬT / TẮT CHÍNH CÓ KIỂM SOÁT KHÓAƯU TIÊN LÚC ĐẦU
-local DisasterBtn = createButton(RightColumn, "DisasterBtn", "Glitch Thảm Họa: OFF", 0, function()
-    GlitchDisasterActive = not GlitchDisasterActive
-    if GlitchDisasterActive then
-        RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: ON"
-        SpinActive = false
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local oldSpin = LocalPlayer.Character.HumanoidRootPart:FindFirstChild("SpinGlitchForce")
-            if oldSpin then oldSpin:Destroy() end
-        end
-    else
-        RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: OFF"
-        -- Khi tắt, trả lại trạng thái đứng yên cố định ban đầu cho map
-        local blocks = getDisasterBlocks()
-        for _, b in ipairs(blocks) do
-            if b:IsA("BasePart") then 
-                b.Velocity = Vector3.new(0,0,0) 
-                b.RotVelocity = Vector3.new(0,0,0)
-                b.Anchored = true 
-            end
-        end
-    end
+-- NÚT CHÍNH MỚI: BẤM NHIỀU LẦN SẼ TĂNG GIẢM ĐỒ HỌA MẠNH HƠN THEO CẤP SỐ NHÂN
+local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
+    boostFPSSystem()
 end)
 
 createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
-    if GlitchDisasterActive then return end
     SpinActive = not SpinActive
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
         local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
         if oldSpin then oldSpin:Destroy() end
-        
         if SpinActive then
             local spin = Instance.new("BodyAngularVelocity", hrp)
             spin.Name = "SpinGlitchForce"
@@ -325,7 +297,6 @@ createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70,
 end)
 
 createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 105, function()
-    if GlitchDisasterActive then return end
     KillAuraActive = not KillAuraActive
     local char = LocalPlayer.Character
     local tool = char and char:FindFirstChildOfClass("Tool")
@@ -340,7 +311,7 @@ createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 105, funct
     end
 end)
 
--- 8. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW EFFECT)
+-- 7. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW EFFECT) ĐỒNG BỘ
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
