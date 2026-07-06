@@ -1,4 +1,4 @@
--- MÃ NGUỒN PHIÊN BẢN V16.4 - AIM HEAD XỬ LÝ QUA TƯỜNG + FOV CẦU VỒNG ĐỔI SIZE
+-- MÃ NGUỒN PHIÊN BẢN V16.5 - AIM LOCK CHẾT HEAD 360° + CHECK TƯỜNG + FOV CẦU VỒNG
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -8,12 +8,12 @@ local Camera = workspace.CurrentCamera
 
 -- 1. KHỞI TẠO HỆ THỐNG PHẦN TỬ ĐỒ HỌA GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV16_4"
+ScreenGui.Name = "ModMenuMobileGlitchV16_5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. NÚT NỔI O - ĐẶT DƯỚI LOGO ROBLOX ĐỂ KHÔNG BỊ KHUẤT
+-- 2. NÚT NỔI O
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 45, 0, 45)
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 150, 0, 30)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Glitch Menu V16.4"
+Title.Text = "Glitch Menu V16.5"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.Font = Enum.Font.SourceSansBold
@@ -67,10 +67,9 @@ MinimizeButton.Parent = MainFrame
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CẤU HÌNH THÔNG SỐ VÒNG TRÒN FOV GỐC VÀ ĐỘ MƯỢT AIM
+-- CẤU HÌNH THÔNG SỐ VÒNG TRÒN FOV GỐC
 local R = 130
 local AimActive = true
-local Smoothness = 0.12
 
 -- KHỞI TẠO VÒNG TRÒN FOV CẦU VỒNG TẠI TÂM MÀN HÌNH
 local F = Instance.new("Frame", ScreenGui)
@@ -125,7 +124,7 @@ local function isPlayerVisible(targetPart)
     return false
 end
 
--- HÀM TÌM KIẾM ĐỐI THỦ GẦN TÂM NHẤT VÀ KHÓA VÀO VỊ TRÍ "HEAD" (ĐẦU) ĐÚNG NHƯ ẢNH IMG_20260706_053241.jpg
+-- HÀM TÌM KIẾM ĐỐI THỦ GẦN TÂM NHẤT VÀ KIỂM TRA FOV
 local function getClosestPlayerToCenter()
     local target = nil
     local maxDistance = R
@@ -148,15 +147,15 @@ local function getClosestPlayerToCenter()
     return target
 end
 
--- VÒNG LẶP RENDER CHÍNH - XỬ LÝ LOCK NHẸ VÀO ĐẦU KHI CÓ NGƯỜI TRONG FOV VÀ TRƯỚC MẶT KHÔNG CÓ VẬT CẢN
+-- VÒNG LẶP RENDER CHÍNH - THAY ĐỔI ĐỂ KHÓA CHẾT CỨNG (KHÔNG LERP)
 RunService.RenderStepped:Connect(function()
     F.Position = UDim2.new(0.5, 0, 0.5, 0)
     Stroke.Color = GlobalRainbowColor -- Cập nhật màu cầu vồng cho vòng tròn FOV liên tục
     if AimActive then
         local target = getClosestPlayerToCenter()
         if target then
-            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, Smoothness)
+            -- Gán thẳng góc nhìn trùng khít hoàn toàn vào vị trí Đầu (Head) của đối thủ
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
         end
     end
 end)
@@ -379,32 +378,9 @@ local function toggleHitboxSword(btn)
     end
 end
 
--- TỐI ƯU HÓA HỆ THỐNG GIẢM ĐỒ HỌA ĐỂ TĂNG FPS
-local boostLevel = 0
-local function toggleBoostFPS(btn)
-    boostLevel = boostLevel + 1
-    btn.Text = "God Boost FPS (Cấp " .. boostLevel .. ")"
-    if setfpscap then setfpscap(999) end
-    if boostLevel >= 1 then
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 9e9
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end
-    if boostLevel >= 2 then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic v.CastShadow = false end
-        end
-    end
-    if boostLevel >= 3 then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") then v:Destroy() end
-        end
-    end
-end
-
 -- 7. THIẾT KẾ CẤU TRÚC DANH MỤC TRÊN KHUNG MENU
 
--- NÚT BẬT/TẮT TÍNH NĂNG AIM KHÓA NHẸ ĐẦU NGƯỜI CHƠI KHÁC
+-- NÚT BẬT/TẮT TÍNH NĂNG AIM KHÓA CHẾT ĐẦU NGƯỜI CHƠI KHÁC
 local AimBtn = createButton("AimBtn", "AIM (Lock Head): ON", 35, function()
     AimActive = not AimActive
     if AimActive then
