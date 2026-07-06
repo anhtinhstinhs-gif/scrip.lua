@@ -1,19 +1,18 @@
--- MÃ NGUỒN PHIÊN BẢN V17.0 - GIỮ FORM V16.6 CHỮ NHẬT - TỐI ƯU 50 TICK & KIỂM SOÁT BẬT/TẮT GIỚI HẠN
+-- MÃ NGUỒN PHIÊN BẢN V17.5 - FIX LỖI ĐỒNG BỘ SERVER - XOAY BLOCK NHƯ CON QUAY (NGƯỜI KHÁC PHẢI THẤY)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- 1. KHỞI TẠO GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileGlitchV17_0"
+ScreenGui.Name = "ModMenuMobileGlitchV17_5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 2. NÚT NỔI O
+-- NÚT NỔI O
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 45, 0, 45)
@@ -30,7 +29,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- 3. KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT RỘNG NẰM NGANG
+-- KHUNG CHỮ NHẬT NẰM NGANG
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 430, 0, 240)
@@ -46,7 +45,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Glitch Disaster Menu V17.0"
+Title.Text = "Glitch Con Quay V17.5"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -77,7 +76,7 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- MẶC ĐỊNH TẤT CẢ TÍNH NĂNG ĐỀU TẮT LÚC BAN ĐẦU
+-- KHỞI TẠO BIẾN
 local GlitchDisasterActive = false
 local SpinActive = false
 local HitboxEspActive = false
@@ -88,7 +87,7 @@ local AngleOffset = 0
 local currentSpeed = 16
 local currentJump = 50
 
--- HÀM LẤY BLOCK TỪ MAP
+-- QUÉT CÁC KHỐI BLOCK TRONG MAP
 local function getDisasterBlocks()
     local blocks = {}
     local struct = workspace:FindFirstChild("Structure") or workspace:FindFirstChild("Island") or workspace:FindFirstChild("Map")
@@ -102,32 +101,37 @@ local function getDisasterBlocks()
     return blocks
 end
 
--- VÒNG LẶP HEARTBEAT ĐIỀU KHIỂN CHUYỂN ĐỘNG VẬT LÝ ĐỒNG BỘ
+-- VÒNG LẶP ĐỒNG BỘ VẬT LÝ MẠNG TÁC ĐỘNG TOÀN SERVER (50 TICK GIỚI HẠN)
 RunService.Heartbeat:Connect(function(deltaTime)
-    -- Chỉ chạy khi người dùng bật tính năng lên
     if GlitchDisasterActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local centerPos = LocalPlayer.Character.HumanoidRootPart.Position
         local blocks = getDisasterBlocks()
         
-        AngleOffset = AngleOffset + (deltaTime * 45)
+        AngleOffset = AngleOffset + (deltaTime * 90) -- Tăng tốc độ quay giống như con quay
         
-        -- Giới hạn cứng tối đa 50 khối vật lý hoạt động để chống lag
         local maxBlocks = math.min(#blocks, 50)
         
         for i = 1, maxBlocks do
             local block = blocks[i]
             if block and block:IsA("BasePart") then
+                -- CRITICAL FIX: Tước quyền neo và mở va chạm để kích hoạt mạng phân phối vật lý (Replication)
                 block.Anchored = false
-                block.CanCollide = false
+                block.CanCollide = true -- Để va chạm bật người chơi khác văng ra ngoài
                 
+                -- Tính toán vị trí quỹ đạo vòng tròn
                 local angle = math.rad((i * (360 / maxBlocks)) + AngleOffset)
                 local targetX = centerPos.X + math.cos(angle) * BlockDistance
                 local targetZ = centerPos.Z + math.sin(angle) * BlockDistance
-                local targetY = centerPos.Y + (math.sin(math.rad(i + AngleOffset)) * 5)
+                local targetY = centerPos.Y + 2 -- Độ cao vừa tầm người
                 
-                -- Tạo vận tốc đẩy vật lý để phía Server và người chơi khác bắt buộc phải nhìn thấy tác động
-                block.CFrame = CFrame.new(Vector3.new(targetX, targetY, targetZ))
-                block.Velocity = Vector3.new(0, 0.1, 0) 
+                local targetPosition = Vector3.new(targetX, targetY, targetZ)
+                
+                -- THAY THẾ CFRAME BẰNG VELOCITY (VẬN TỐC THỰC): Khiến server bắt buộc đồng bộ hình ảnh sang máy người khác
+                local velocityVector = (targetPosition - block.Position) * 45
+                block.Velocity = velocityVector
+                
+                -- Tạo hiệu ứng tự xoay tròn của bản thân khối block giống con quay
+                block.RotVelocity = Vector3.new(0, 50, 0)
             end
         end
     end
@@ -207,7 +211,7 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
     end)
 end
 
--- 6. HÀM TẠO NÚT BẤT KỲ
+-- 6. HÀM TẠO NÚT TÍNH NĂNG
 local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
@@ -228,7 +232,6 @@ local function createButton(parentCol, name, text, yOffset, callback)
     return Btn
 end
 
--- ĐIỀU KHIỂN NHÂN VẬT GỐC (CHỈ SET KHI ĐƯỢC CHỈNH TRÊN SLIDER)
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
     if humanoid then
@@ -238,11 +241,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- =====================================================================
--- 7. SẮP XẾP DANH MỤC TRÊN KHUNG CHỮ NHẬT
-
+-- 7. SẮP XẾP BẢNG CHỨC NĂNG CỘT TRÁI VÀ CỘT PHẢI
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
-    if GlitchDisasterActive then return end -- Khóa khi tính năng chính hoạt động
+    if GlitchDisasterActive then return end
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
@@ -257,13 +258,11 @@ createSlider(LeftColumn, "Khoảng cách Block", 90, 5, 150, 30, function(val)
     BlockDistance = val
 end)
 
--- NÚT BẬT/TẮT TÍNH NĂNG CHÍNH - GLITCH THẢM HỌA KHÓA ƯU TIÊN
+-- NÚT BẬT / TẮT CHÍNH CÓ KIỂM SOÁT KHÓAƯU TIÊN LÚC ĐẦU
 local DisasterBtn = createButton(RightColumn, "DisasterBtn", "Glitch Thảm Họa: OFF", 0, function()
     GlitchDisasterActive = not GlitchDisasterActive
     if GlitchDisasterActive then
         RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: ON"
-        
-        -- BUỘC TẮT/RESET CÁC TÍNH NĂNG PHỤ KHÁC ĐỂ TRÁNH XUNG ĐỘT PHẦN CỨNG
         SpinActive = false
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             local oldSpin = LocalPlayer.Character.HumanoidRootPart:FindFirstChild("SpinGlitchForce")
@@ -271,16 +270,20 @@ local DisasterBtn = createButton(RightColumn, "DisasterBtn", "Glitch Thảm Họ
         end
     else
         RightColumn.DisasterBtn.Text = "Glitch Thảm Họa: OFF"
-        -- Trả lại thuộc tính vật lý của map khi tắt
+        -- Khi tắt, trả lại trạng thái đứng yên cố định ban đầu cho map
         local blocks = getDisasterBlocks()
         for _, b in ipairs(blocks) do
-            if b:IsA("BasePart") then b.Anchored = true b.CanCollide = true end
+            if b:IsA("BasePart") then 
+                b.Velocity = Vector3.new(0,0,0) 
+                b.RotVelocity = Vector3.new(0,0,0)
+                b.Anchored = true 
+            end
         end
     end
 end)
 
 createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
-    if GlitchDisasterActive then return end -- Nếu đang bật Glitch Thảm Họa thì nút này vô hiệu lực
+    if GlitchDisasterActive then return end
     SpinActive = not SpinActive
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -300,14 +303,12 @@ end)
 createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70, function()
     if GlitchDisasterActive then return end
     HitboxEspActive = not HitboxEspActive
-    
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
             for _, v in ipairs(plr.Character:GetChildren()) do
                 if v:IsA("BasePart") then
                     local oldEsp = v:FindFirstChild("HitboxESPMobile")
                     if oldEsp then oldEsp:Destroy() end
-                    
                     if HitboxEspActive and v.Name ~= "HumanoidRootPart" then
                         local box = Instance.new("BoxHandleAdornment", v)
                         box.Name = "HitboxESPMobile"
@@ -333,13 +334,13 @@ createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 105, funct
             tool.Handle.Size = Vector3.new(5000, 5000, 5000)
             tool.Handle.CanCollide = false
         else
-            tool.Handle.Size = Vector3.new(1, 1, 1) -- Đưa về size mặc định
+            tool.Handle.Size = Vector3.new(1, 1, 1)
             tool.Handle.CanCollide = true
         end
     end
 end)
 
--- 8. ĐỒNG BỘ HIỆU ỨNG CẦU VỒNG (RAINBOW) LIÊN TỤC
+-- 8. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW EFFECT)
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
