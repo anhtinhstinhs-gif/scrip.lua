@@ -1,14 +1,15 @@
--- MÃ NGUỒN PHIÊN BẢN V19.0 - FIX KILL AURA & THÊM AIMBOT + SLIDER KHOẢNG CÁCH
+-- MÃ NGUỒN PHIÊN BẢN V20.0 - TÍCH HỢP DRAWING ESP 2D & REMOTE KILL AURA SỬA LỖI TRỰC TIẾP
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN
+-- 1. KHỞI TẠO GIAO DIỆN MENU
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileFPS_V19"
+ScreenGui.Name = "ModMenuMobileFPS_V20"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -30,7 +31,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT (TĂNG CHIỀU CAO LÊN 280 ĐỂ THÊM TÍNH NĂNG)
+-- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT RỘNG (CHIỀU CAO 280)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 430, 0, 280)
@@ -46,7 +47,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Advanced FPS & Aim Menu V19.0"
+Title.Text = "Premium Hub Expert V20.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -77,20 +78,61 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- KHỞI TẠO BIẾN TÍNH NĂNG
+-- 2. KHỞI TẠO BIẾN TRẠNG THÁI TÍNH NĂNG
 local SpinActive = false
-local HitboxEspActive = false
-local KillAuraActive = false
+local HitboxEspActive = false   -- Biến bật/tắt Drawing ESP mới từ code của bạn
+local KillAuraActive = false     -- Biến bật/tắt AutoHit Weapon cũ/mới
 local AimActive = false
+local AutoGachaActive = false    -- Tính năng phụ thêm từ code mở rương của bạn
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
 local currentJump = 50
-local AimDistance = 100 -- Khoảng cách Aim mặc định
+local AimDistance = 100
 
 if setfpscap then setfpscap(999) end
 
--- HÀM TÌM NGƯỜI CHƠI GẦN NHẤT
+-- =====================================================================
+-- 3. CÀI ĐẶT HỆ THỐNG DRAWING ESP TOÀN CỤC (TỪ CODE CỦA BẠN)
+local ESP_Storage = {}
+
+local function createESP(plr)
+    if not Drawing then return end
+    local box = Drawing.new("Square")
+    box.Thickness = 1
+    box.Filled = false
+    box.Color = Color3.fromRGB(255, 255, 255)
+    box.Visible = false
+
+    local name = Drawing.new("Text")
+    name.Size = 13
+    name.Center = true
+    name.Outline = true
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Visible = false
+
+    ESP_Storage[plr] = {box = box, name = name}
+end
+
+-- Khởi tạo ESP ban đầu cho người chơi hiện tại
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then createESP(p) end
+end
+-- Tự động nạp khi có người chơi mới vào phòng
+Players.PlayerAdded:Connect(function(p)
+    if p ~= LocalPlayer then createESP(p) end
+end)
+-- Tự dọn dẹp khi người chơi rời phòng tránh rò rỉ bộ nhớ
+Players.PlayerRemoving:Connect(function(p)
+    if ESP_Storage[p] then
+        ESP_Storage[p].box:Remove()
+        ESP_Storage[p].name:Remove()
+        ESP_Storage[p] = nil
+    end
+end)
+
+-- =====================================================================
+-- 4. HÀM TÌM KIẾM MỤC TIÊU GẦN NHẤT CHO AIMBOT
 local function getClosestPlayer()
     local closestTarget = nil
     local maxDist = AimDistance
@@ -98,8 +140,7 @@ local function getClosestPlayer()
         local myPos = LocalPlayer.Character.HumanoidRootPart.Position
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-                local targetPos = plr.Character.HumanoidRootPart.Position
-                local dist = (targetPos - myPos).Magnitude
+                local dist = (plr.Character.HumanoidRootPart.Position - myPos).Magnitude
                 if dist < maxDist then
                     maxDist = dist
                     closestTarget = plr.Character.HumanoidRootPart
@@ -110,30 +151,107 @@ local function getClosestPlayer()
     return closestTarget
 end
 
--- VÒNG LẶP HỆ THỐNG XỬ LÝ ĐỒNG BỘ AIM VÀ KILL AURA
+-- =====================================================================
+-- 5. VÒNG LẶP CHÍNH (RENDERSTEPPED THAY THẾ CHUẨN XÁC)
 RunService.RenderStepped:Connect(function()
     local target = getClosestPlayer()
     
-    -- Xử lý Aimbot khóa góc nhìn mượt mà
+    -- [AIMBOT] Khóa góc nhìn camera mượt mà
     if AimActive and target then
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
     end
 
-    -- Xử lý Kill Aura nâng cao: Gửi tín hiệu kích hoạt trực tiếp lên Tool đang cầm
-    if KillAuraActive then
-        local char = LocalPlayer.Character
-        local tool = char and char:FindFirstChildOfClass("Tool")
-        if tool and target then
-            -- Quay nhân vật về hướng mục tiêu để Tool hoạt động chính xác
-            if char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position, Vector3.new(target.Position.X, char.HumanoidRootPart.Position.Y, target.Position.Z))
+    -- [KILL AURA REMOTE LỖI] Tích hợp chuẩn từ đoạn mã gửi gói tin độc hại của bạn
+    if KillAuraActive and LocalPlayer.Character then
+        local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local myTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("GameRemoteFunction")
+        
+        if myHrp and remote then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local enemyHrp = plr.Character.HumanoidRootPart
+                    local dist = (enemyHrp.Position - myHrp.Position).Magnitude
+                    
+                    -- Chỉ tấn công nếu nằm trong khoảng cách slider cho phép
+                    if dist <= AimDistance then
+                        local dir = (enemyHrp.Position - myHrp.Position).Unit
+                        -- Gửi lệnh tấn công ảo phá vỡ khoảng cách vật lý thẳng lên Server
+                        remote:InvokeServer(
+                            "AttemptWeaponHit",
+                            {
+                                hitboxOffset = Vector3.new(0, 0, -1.5),
+                                knockback = 50,
+                                shouldLock = true,
+                                shouldSlow = true,
+                                attackCooldown = 0,
+                                hitboxSize = Vector3.new(9, 14, 8),
+                                lungeKnockback = 55,
+                                slowTime = 1.5,
+                                slowMult = 0.2,
+                                cycleIndex = 1,
+                                damage = 100, -- Ép sát thương tối đa hạ gục luôn
+                                tool = myTool,
+                                shouldLunge = true
+                            },
+                            {{
+                                knockback = 50,
+                                isClosestEnemy = true,
+                                origin = myHrp.Position,
+                                enemyModel = plr.Character,
+                                distance = dist,
+                                direction = dir
+                            }}
+                        )
+                    end
+                end
             end
-            tool:Activate() -- Ép công cụ tự động click/kích hoạt liên tục
         end
+    end
+
+    -- [DRAWING BOX ESP 2D] Xử lý hiển thị khung vuông và tên từ code của bạn
+    for plr, esp in pairs(ESP_Storage) do
+        if HitboxEspActive then
+            local char = plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local head = char and char:FindFirstChild("Head")
+
+            if hrp and head then
+                local top = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                local h = math.abs(top.Y - bottom.Y)
+                local w = h / 2
+
+                if top.Z > 0 and bottom.Z > 0 then
+                    esp.box.Size = Vector2.new(w, h)
+                    esp.box.Position = Vector2.new(top.X - w / 2, top.Y)
+                    esp.box.Visible = true
+                    
+                    esp.name.Position = Vector2.new(top.X, top.Y - 14)
+                    esp.name.Text = plr.Name
+                    esp.name.Visible = true
+                else
+                    esp.box.Visible = false
+                    esp.name.Visible = false
+                end
+            else
+                esp.box.Visible = false
+                esp.name.Visible = false
+            end
+        else
+            esp.box.Visible = false
+            esp.name.Visible = false
+        end
+    end
+
+    -- [AUTO GACHA] Mở rương Divine tự động tích hợp từ code của bạn
+    if AutoGachaActive and ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("GameRemoteFunction") then
+        ReplicatedStorage.Events.GameRemoteFunction:InvokeServer("AttemptRollGachaChest", "Divine")
     end
 end)
 
--- HÀM SIÊU TỐI ƯU ĐỒ HỌA
+-- =====================================================================
+-- 6. HÀM TỐI ƯU HÓA FPS ĐỒ HỌA
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
     if OptimizeLevel >= 1 then
@@ -168,7 +286,8 @@ local function boostFPSSystem()
     RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- KÉO THẢ DI CHUYỂN MENU
+-- =====================================================================
+-- 7. THÀNH PHẦN KÉO THẢ DI CHUYỂN MENU VÀ THANH SLIDER / BUTTONS KHỞI TẠO GIAO DIỆN
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -176,63 +295,32 @@ local function update(input)
 end
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then dragging = false end
-        end)
+        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then update(input) end
-end)
+MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- HÀM TẠO THANH KÉO SLIDER
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 18)
-    Label.Position = UDim2.new(0, 0, 0, yOffset)
-    Label.Text = text .. ": " .. defaultVal
-    Label.TextColor3 = Color3.fromRGB(220, 220, 220)
-    Label.TextSize = 13
-    Label.BackgroundTransparency = 1
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.Parent = parentCol
+    Label.Size = UDim2.new(1, 0, 0, 18); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220); Label.TextSize = 13; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = parentCol
 
     local SliderBar = Instance.new("Frame")
-    SliderBar.Size = UDim2.new(1, 0, 0, 8)
-    SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 20)
-    SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    SliderBar.Parent = parentCol
+    SliderBar.Size = UDim2.new(1, 0, 0, 8); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 20); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.Parent = parentCol
 
     local SliderBtn = Instance.new("TextButton")
-    SliderBtn.Size = UDim2.new(0, 16, 0, 16)
-    SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4)
-    SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    SliderBtn.Text = ""
-    SliderBtn.Parent = SliderBar
-    
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(1, 0)
-    BtnCorner.Parent = SliderBtn
+    SliderBtn.Size = UDim2.new(0, 16, 0, 16); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.Parent = SliderBar
+    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(1, 0); BtnCorner.Parent = SliderBtn
     table.insert(RainbowObjects, SliderBtn)
 
     local sliding = false
-    SliderBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = true end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = false end
-    end)
+    SliderBtn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = true end end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
     UserInputService.InputChanged:Connect(function(input)
         if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local mousePos = input.Position.X
-            local barStart = SliderBar.AbsolutePosition.X
-            local barWidth = SliderBar.AbsoluteSize.X
+            local mousePos = input.Position.X; local barStart = SliderBar.AbsolutePosition.X; local barWidth = SliderBar.AbsoluteSize.X
             local percentage = math.clamp((mousePos - barStart) / barWidth, 0, 1)
             SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 16), 0, -4)
             local calculatedValue = math.floor(minVal + (percentage * (maxVal - minVal)))
@@ -242,22 +330,11 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
     end)
 end
 
--- HÀM TẠO NÚT TÍNH NĂNG
 local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
-    Btn.Name = name
-    Btn.Size = UDim2.new(1, 0, 0, 26)
-    Btn.Position = UDim2.new(0, 0, 0, yOffset)
-    Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    Btn.Text = text
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.TextSize = 13
-    Btn.Font = Enum.Font.SourceSansBold
-    Btn.Parent = parentCol
-
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(0, 5)
-    BtnCorner.Parent = Btn
+    Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 26); Btn.Position = UDim2.new(0, 0, 0, yOffset); Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.TextSize = 13; Btn.Font = Enum.Font.SourceSansBold; Btn.Parent = parentCol
+    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 5); BtnCorner.Parent = Btn
     table.insert(RainbowObjects, Btn)
     Btn.MouseButton1Click:Connect(callback)
     return Btn
@@ -265,15 +342,11 @@ end
 
 LocalPlayer.CharacterAdded:Connect(function(char)
     local humanoid = char:WaitForChild("Humanoid")
-    if humanoid then
-        humanoid.UseJumpPower = true
-        humanoid.WalkSpeed = currentSpeed
-        humanoid.JumpPower = currentJump
-    end
+    if humanoid then humanoid.UseJumpPower = true; humanoid.WalkSpeed = currentSpeed; humanoid.JumpPower = currentJump end
 end)
 
 -- =====================================================================
--- 2 CỘT TÍNH NĂNG TRÊN BẢNG CHỮ NHẬT
+-- 8. THIẾT LẬP CÁC NÚT VÀ THANH TRƯỢT LÊN HAI CỘT MENU
 
 -- --- CỘT TRÁI (SLIDERS) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
@@ -286,11 +359,9 @@ createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
--- SLIDER MỚI THÊM: Điều chỉnh khoảng cách quét Aim / Aura
-createSlider(LeftColumn, "Khoảng cách Aim", 90, 10, 500, 100, function(val)
+createSlider(LeftColumn, "Khoảng cách Aim/Aura", 90, 10, 500, 100, function(val)
     AimDistance = val
 end)
-
 
 -- --- CỘT PHẢI (BUTTONS) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
@@ -299,57 +370,41 @@ end)
 
 createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
     SpinActive = not SpinActive
-    local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
         local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
         if oldSpin then oldSpin:Destroy() end
         if SpinActive then
-            local spin = Instance.new("BodyAngularVelocity", hrp)
-            spin.Name = "SpinGlitchForce"
-            spin.MaxTorque = Vector3.new(0, math.huge, 0)
-            spin.AngularVelocity = Vector3.new(0, 60, 0)
+            local spin = Instance.new("BodyAngularVelocity", hrp); spin.Name = "SpinGlitchForce"
+            spin.MaxTorque = Vector3.new(0, math.huge, 0); spin.AngularVelocity = Vector3.new(0, 60, 0)
         end
     end
 end)
 
-createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70, function()
+-- NÚT ESP: Đã cập nhật thuật toán vẽ Box 2D siêu nhẹ theo code của bạn!
+createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Box ESP 2D", 70, function()
     HitboxEspActive = not HitboxEspActive
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character then
-            for _, v in ipairs(plr.Character:GetChildren()) do
-                if v:IsA("BasePart") then
-                    local oldEsp = v:FindFirstChild("HitboxESPMobile")
-                    if oldEsp then oldEsp:Destroy() end
-                    if HitboxEspActive and v.Name ~= "HumanoidRootPart" then
-                        local box = Instance.new("BoxHandleAdornment", v)
-                        box.Name = "HitboxESPMobile"
-                        box.Size = v.Size + Vector3.new(0.05, 0.05, 0.05)
-                        box.AlwaysOnTop = true
-                        box.Color3 = Color3.fromRGB(255, 255, 255)
-                        box.Transparency = 0.4
-                        box.Adornee = v
-                    end
-                end
-            end
-        end
-    end
+    RightColumn.EspBtn.Text = HitboxEspActive and "Khung Box ESP 2D: ON" or "Bật/Tắt Khung Box ESP 2D"
 end)
 
--- NÚT MỚI: Bật/Tắt Tự động ngắm Aim khóa mục tiêu
 createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
     AimActive = not AimActive
     RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
--- NÚT SỬA LỖI: Kill Aura kích hoạt Tool chuẩn xác
-createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 140, function()
+-- NÚT SWORD: Sửa lỗi dùng lệnh AttemptWeaponHit độc hại quét sát thương toàn map từ code của bạn!
+createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Cực Mạnh", 140, function()
     KillAuraActive = not KillAuraActive
-    RightColumn.SwordBtn.Text = KillAuraActive and "Kill Aura Toàn Map: ON" or "Kill Aura Vũ Khí Toàn Map"
+    RightColumn.SwordBtn.Text = KillAuraActive and "Kill Aura Remote: ON" or "Kill Aura Vũ Khí Cực Mạnh"
 end)
 
+-- NÚT BONUS: Tự động mở hòm Divine rương thần thánh
+createButton(RightColumn, "GachaBtn", "Auto Gacha Chest: OFF", 175, function()
+    AutoGachaActive = not AutoGachaActive
+    RightColumn.GachaBtn.Text = AutoGachaActive and "Auto Gacha Chest: ON" or "Auto Gacha Chest: OFF"
+end)
 
--- 4. VÒNG LẶP CẦU VỒNG (RAINBOW EFFECT)
+-- 9. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
@@ -359,5 +414,5 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
-MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false OpenButton.Visible = true end)
-OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true OpenButton.Visible = false end)
+MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
+OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
