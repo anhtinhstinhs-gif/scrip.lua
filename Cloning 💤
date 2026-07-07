@@ -1,5 +1,5 @@
--- [[ ROBLOX DUPE TOOL LOCALSCRIPT ]]
--- Tự động chạy độc lập trên PC Executor, không phụ thuộc Server
+-- [[ ROBLOX DUPE TOOL LOCALSCRIPT (MOBILE OPTIMIZED) ]]
+-- Tự động chạy độc lập trên Mobile/PC Executor, tối ưu giao diện chạm và kéo thả
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -8,7 +8,7 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Xác định vị trí lưu trữ GUI an toàn
+-- Xác định vị trí lưu trữ GUI an toàn (Ưu tiên CoreGui, nếu không có quyền thì dùng PlayerGui)
 local targetParent = playerGui
 local success, isCoreGui = pcall(function() return CoreGui.Name end)
 if success and CoreGui then
@@ -16,48 +16,49 @@ if success and CoreGui then
 end
 
 -- Tránh tạo trùng GUI khi execute nhiều lần
-local existingGui = targetParent:FindFirstChild("DupeToolGui")
+local existingGui = targetParent:FindFirstChild("DupeToolGuiMobile")
 if existingGui then existingGui:Destroy() end
 
 -- [[ KHỞI TẠO GUI ]]
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DupeToolGui"
+ScreenGui.Name = "DupeToolGuiMobile"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = targetParent
 
--- Nút LED chính
+-- Nút LED chính (Tăng kích thước lên 80x80 để dễ bấm trên màn hình cảm ứng điện thoại)
 local LedButton = Instance.new("TextButton")
 LedButton.Name = "LedButton"
-LedButton.Size = UDim2.new(0, 70, 0, 70)
-LedButton.Position = UDim2.new(0.1, 0, 0.5, -35)
+LedButton.Size = UDim2.new(0, 80, 0, 80)
+LedButton.Position = UDim2.new(0.1, 0, 0.4, 0)
 LedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 LedButton.Text = "DUPE"
 LedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 LedButton.Font = Enum.Font.SourceSansBold
-LedButton.TextSize = 18
+LedButton.TextSize = 20
 LedButton.AutoButtonColor = false
+LedButton.Active = true -- Cần thiết cho Mobile phản hồi touch tốt hơn
 LedButton.Parent = ScreenGui
 
 local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.CornerRadius = UDim.new(0, 16)
 UICorner.Parent = LedButton
 
--- Nhãn thông báo (Notification Label)
+-- Nhãn thông báo (Notification Label) - Đưa lên phía trên nút để không bị ngón tay che khuất
 local Notification = Instance.new("TextLabel")
 Notification.Name = "Notification"
-Notification.Size = UDim2.new(0, 160, 0, 30)
-Notification.Position = UDim2.new(0.5, -80, 0, -40)
+Notification.Size = UDim2.new(0, 160, 0, 35)
+Notification.Position = UDim2.new(0.5, -80, 0, -45)
 Notification.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Notification.TextColor3 = Color3.fromRGB(255, 255, 255)
-Notification.Font = Enum.Font.SourceSans
+Notification.Font = Enum.Font.SourceSansBold
 Notification.TextSize = 14
-Notification.BackgroundTransparency = 0.2
+Notification.BackgroundTransparency = 0.15
 Notification.Visible = false
 Notification.Parent = LedButton
 
 local NotifCorner = Instance.new("UICorner")
-NotifCorner.CornerRadius = UDim.new(0, 6)
+NotifCorner.CornerRadius = UDim.new(0, 8)
 NotifCorner.Parent = Notification
 
 -- [[ CHỨC NĂNG THÔNG BÁO ]]
@@ -77,55 +78,46 @@ local function showNotification(text, color)
     end)
 end
 
--- [[ HIỆU ỨNG HOVER / CLICK ]]
-LedButton.MouseEnter:Connect(function()
-    LedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-end)
-
-LedButton.MouseLeave:Connect(function()
-    LedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-end)
-
-LedButton.MouseButton1Down:Connect(function()
-    LedButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
-end)
-
-LedButton.MouseButton1Up:Connect(function()
-    LedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-end)
-
--- [[ HỆ THỐNG KÉO THẢ (DRAGGING) ]]
-local dragging = false
-local dragInput, dragStart, startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    LedButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-
+-- [[ HIỆU ỨNG CHẠM CẢM ỨNG (TOUCH EFFECT) ]]
 LedButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = LedButton.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        LedButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
     end
 end)
 
-LedButton.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+LedButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        LedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    end
+end)
+
+-- [[ HỆ THỐNG KÉO THẢ TỐI ƯU CHO MOBILE ]]
+local dragging = false
+local dragInput, dragStart, startPos
+
+LedButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = LedButton.Position
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
+    if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) and dragging then
+        local delta = input.Position - dragStart
+        LedButton.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
     end
 end)
 
@@ -133,19 +125,19 @@ end)
 local function doDupe()
     local character = player.Character
     if not character then 
-        showNotification("Lỗi: Không tìm thấy nhân vật!", Color3.fromRGB(255, 85, 85))
+        showNotification("Lỗi: Không có nhân vật!", Color3.fromRGB(255, 85, 85))
         return 
     end
     
-    -- Tìm Tool đang cầm trên tay
+    -- Tìm Tool đang cầm trên tay nhân vật
     local currentTool = character:FindFirstChildOfClass("Tool")
     
     if not currentTool then
-        showNotification("Không có Tool!", Color3.fromRGB(255, 170, 0))
+        showNotification("Không có Tool.", Color3.fromRGB(255, 170, 0))
         return
     end
     
-    -- Tiến hành nhân bản
+    -- Tiến hành nhân bản cục bộ
     local successClone, clonedTool = pcall(function()
         return currentTool:Clone()
     end)
