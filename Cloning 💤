@@ -1,0 +1,167 @@
+-- [[ ROBLOX DUPE TOOL LOCALSCRIPT ]]
+-- Tự động chạy độc lập trên PC Executor, không phụ thuộc Server
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Xác định vị trí lưu trữ GUI an toàn
+local targetParent = playerGui
+local success, isCoreGui = pcall(function() return CoreGui.Name end)
+if success and CoreGui then
+    targetParent = CoreGui
+end
+
+-- Tránh tạo trùng GUI khi execute nhiều lần
+local existingGui = targetParent:FindFirstChild("DupeToolGui")
+if existingGui then existingGui:Destroy() end
+
+-- [[ KHỞI TẠO GUI ]]
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DupeToolGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = targetParent
+
+-- Nút LED chính
+local LedButton = Instance.new("TextButton")
+LedButton.Name = "LedButton"
+LedButton.Size = UDim2.new(0, 70, 0, 70)
+LedButton.Position = UDim2.new(0.1, 0, 0.5, -35)
+LedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+LedButton.Text = "DUPE"
+LedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+LedButton.Font = Enum.Font.SourceSansBold
+LedButton.TextSize = 18
+LedButton.AutoButtonColor = false
+LedButton.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = LedButton
+
+-- Nhãn thông báo (Notification Label)
+local Notification = Instance.new("TextLabel")
+Notification.Name = "Notification"
+Notification.Size = UDim2.new(0, 160, 0, 30)
+Notification.Position = UDim2.new(0.5, -80, 0, -40)
+Notification.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+Notification.Font = Enum.Font.SourceSans
+Notification.TextSize = 14
+Notification.BackgroundTransparency = 0.2
+Notification.Visible = false
+Notification.Parent = LedButton
+
+local NotifCorner = Instance.new("UICorner")
+NotifCorner.CornerRadius = UDim.new(0, 6)
+NotifCorner.Parent = Notification
+
+-- [[ CHỨC NĂNG THÔNG BÁO ]]
+local currentNotifId = 0
+local function showNotification(text, color)
+    currentNotifId = currentNotifId + 1
+    local myId = currentNotifId
+    
+    Notification.Text = text
+    Notification.TextColor3 = color
+    Notification.Visible = true
+    
+    task.delay(2, function()
+        if currentNotifId == myId then
+            Notification.Visible = false
+        end
+    end)
+end
+
+-- [[ HIỆU ỨNG HOVER / CLICK ]]
+LedButton.MouseEnter:Connect(function()
+    LedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+end)
+
+LedButton.MouseLeave:Connect(function()
+    LedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+end)
+
+LedButton.MouseButton1Down:Connect(function()
+    LedButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+end)
+
+LedButton.MouseButton1Up:Connect(function()
+    LedButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+end)
+
+-- [[ HỆ THỐNG KÉO THẢ (DRAGGING) ]]
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    LedButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+LedButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = LedButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+LedButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- [[ CHỨC NĂNG CHÍNH (CLONE TOOL) ]]
+local function doDupe()
+    local character = player.Character
+    if not character then 
+        showNotification("Lỗi: Không tìm thấy nhân vật!", Color3.fromRGB(255, 85, 85))
+        return 
+    end
+    
+    -- Tìm Tool đang cầm trên tay
+    local currentTool = character:FindFirstChildOfClass("Tool")
+    
+    if not currentTool then
+        showNotification("Không có Tool!", Color3.fromRGB(255, 170, 0))
+        return
+    end
+    
+    -- Tiến hành nhân bản
+    local successClone, clonedTool = pcall(function()
+        return currentTool:Clone()
+    end)
+    
+    if successClone and clonedTool then
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            clonedTool.Parent = backpack
+            showNotification("Clone thành công.", Color3.fromRGB(85, 255, 85))
+        else
+            clonedTool:Destroy()
+            showNotification("Clone thất bại.", Color3.fromRGB(255, 85, 85))
+        end
+    else
+        showNotification("Clone thất bại.", Color3.fromRGB(255, 85, 85))
+    end
+end
+
+LedButton.MouseButton1Click:Connect(doDupe)
