@@ -1,4 +1,4 @@
--- MÃ NGUỒN PHIÊN BẢN V20.0 - TÍCH HỢP DRAWING ESP 2D & REMOTE KILL AURA SỬA LỖI TRỰC TIẾP
+-- MÃ NGUỒN PHIÊN BẢN V21.0 - BOX ESP 3D (R6/R15) & AOE KILL AURA KHỔNG LỒ (XÓA GACHA)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,9 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU
+-- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Hạ chiều cao xuống 250 vì đã bỏ Gacha)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileFPS_V20"
+ScreenGui.Name = "ModMenuMobileFPS_V21"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -31,11 +31,10 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT RỘNG (CHIỀU CAO 280)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 280)
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -140)
+MainFrame.Size = UDim2.new(0, 430, 0, 250)
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -125)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -47,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Premium Hub Expert V20.0"
+Title.Text = "AOE Kill & 3D ESP Menu V21.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -78,61 +77,62 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- 2. KHỞI TẠO BIẾN TRẠNG THÁI TÍNH NĂNG
+-- KHỞI TẠO BIẾN TRẠNG THÁI
 local SpinActive = false
-local HitboxEspActive = false   -- Biến bật/tắt Drawing ESP mới từ code của bạn
-local KillAuraActive = false     -- Biến bật/tắt AutoHit Weapon cũ/mới
+local HitboxEspActive = false   
+local KillAuraActive = false     
 local AimActive = false
-local AutoGachaActive = false    -- Tính năng phụ thêm từ code mở rương của bạn
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
 local currentJump = 50
-local AimDistance = 100
+local AimDistance = 150 -- Tầm quét AOE mặc định rộng hơn
 
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- 3. CÀI ĐẶT HỆ THỐNG DRAWING ESP TOÀN CỤC (TỪ CODE CỦA BẠN)
-local ESP_Storage = {}
-
-local function createESP(plr)
-    if not Drawing then return end
-    local box = Drawing.new("Square")
-    box.Thickness = 1
-    box.Filled = false
-    box.Color = Color3.fromRGB(255, 255, 255)
-    box.Visible = false
-
-    local name = Drawing.new("Text")
-    name.Size = 13
-    name.Center = true
-    name.Outline = true
-    name.Color = Color3.fromRGB(255, 255, 255)
-    name.Visible = false
-
-    ESP_Storage[plr] = {box = box, name = name}
-end
-
--- Khởi tạo ESP ban đầu cho người chơi hiện tại
-for _, p in ipairs(Players:GetPlayers()) do
-    if p ~= LocalPlayer then createESP(p) end
-end
--- Tự động nạp khi có người chơi mới vào phòng
-Players.PlayerAdded:Connect(function(p)
-    if p ~= LocalPlayer then createESP(p) end
-end)
--- Tự dọn dẹp khi người chơi rời phòng tránh rò rỉ bộ nhớ
-Players.PlayerRemoving:Connect(function(p)
-    if ESP_Storage[p] then
-        ESP_Storage[p].box:Remove()
-        ESP_Storage[p].name:Remove()
-        ESP_Storage[p] = nil
+-- 2. HÀM TẠO BOX ESP 3D TƯƠNG THÍCH CẢ R6 VÀ R15
+local function apply3DESP(character)
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            -- Xóa ESP cũ nếu có
+            local oldEsp = v:FindFirstChild("3DESP_Box")
+            if oldEsp then oldEsp:Destroy() end
+            
+            if HitboxEspActive then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = "3DESP_Box"
+                box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04)
+                box.AlwaysOnTop = true
+                box.ZIndex = 5
+                box.Color3 = Color3.fromRGB(255, 255, 255) -- Khung màu trắng đặc trưng bạn thích
+                box.Transparency = 0.4
+                box.Adornee = v
+                box.Parent = v
+            end
+        end
     end
+end
+
+-- Hàm cập nhật trạng thái ESP toàn phòng khi bấm nút
+local function updateAllESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            apply3DESP(plr.Character)
+        end
+    end
+end
+
+-- Tự động áp dụng khi người chơi khác hồi sinh lại nhân vật mới
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(0.5) -- Chờ nhân vật tải xong cấu trúc R6/R15
+        if HitboxEspActive then apply3DESP(char) end
+    end)
 end)
 
 -- =====================================================================
--- 4. HÀM TÌM KIẾM MỤC TIÊU GẦN NHẤT CHO AIMBOT
+-- 3. HÀM TÌM KIẾM MỤC TIÊU GẦN NHẤT CHO AIMBOT
 local function getClosestPlayer()
     local closestTarget = nil
     local maxDist = AimDistance
@@ -152,7 +152,7 @@ local function getClosestPlayer()
 end
 
 -- =====================================================================
--- 5. VÒNG LẶP CHÍNH (RENDERSTEPPED THAY THẾ CHUẨN XÁC)
+-- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ AOE KILL & AIM)
 RunService.RenderStepped:Connect(function()
     local target = getClosestPlayer()
     
@@ -161,7 +161,7 @@ RunService.RenderStepped:Connect(function()
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
     end
 
-    -- [KILL AURA REMOTE LỖI] Tích hợp chuẩn từ đoạn mã gửi gói tin độc hại của bạn
+    -- [KILL AURA AOE DIỆN RỘNG] Phóng to vùng quét và gửi gói tin sát thương liên tục
     if KillAuraActive and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local myTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
@@ -169,33 +169,33 @@ RunService.RenderStepped:Connect(function()
         
         if myHrp and remote then
             for _, plr in ipairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
                     local enemyHrp = plr.Character.HumanoidRootPart
                     local dist = (enemyHrp.Position - myHrp.Position).Magnitude
                     
-                    -- Chỉ tấn công nếu nằm trong khoảng cách slider cho phép
+                    -- Kiểm tra nếu mục tiêu nằm trong tầm slider AOE cấu hình
                     if dist <= AimDistance then
                         local dir = (enemyHrp.Position - myHrp.Position).Unit
-                        -- Gửi lệnh tấn công ảo phá vỡ khoảng cách vật lý thẳng lên Server
+                        -- Gửi gói tin phá vỡ mọi khoảng cách, tăng kích thước vùng đánh (hitboxSize) lên 100x100x100 AOE
                         remote:InvokeServer(
                             "AttemptWeaponHit",
                             {
-                                hitboxOffset = Vector3.new(0, 0, -1.5),
-                                knockback = 50,
+                                hitboxOffset = Vector3.new(0, 0, 0),
+                                knockback = 30,
                                 shouldLock = true,
-                                shouldSlow = true,
+                                shouldSlow = false,
                                 attackCooldown = 0,
-                                hitboxSize = Vector3.new(9, 14, 8),
-                                lungeKnockback = 55,
-                                slowTime = 1.5,
-                                slowMult = 0.2,
+                                hitboxSize = Vector3.new(100, 100, 100), -- TẦM ĐÁNH AOE KHỔNG LỒ TOÀN DIỆN
+                                lungeKnockback = 35,
+                                slowTime = 0,
+                                slowMult = 1,
                                 cycleIndex = 1,
-                                damage = 100, -- Ép sát thương tối đa hạ gục luôn
+                                damage = 100, 
                                 tool = myTool,
-                                shouldLunge = true
+                                shouldLunge = false
                             },
                             {{
-                                knockback = 50,
+                                knockback = 30,
                                 isClosestEnemy = true,
                                 origin = myHrp.Position,
                                 enemyModel = plr.Character,
@@ -208,50 +208,10 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-
-    -- [DRAWING BOX ESP 2D] Xử lý hiển thị khung vuông và tên từ code của bạn
-    for plr, esp in pairs(ESP_Storage) do
-        if HitboxEspActive then
-            local char = plr.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            local head = char and char:FindFirstChild("Head")
-
-            if hrp and head then
-                local top = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                local h = math.abs(top.Y - bottom.Y)
-                local w = h / 2
-
-                if top.Z > 0 and bottom.Z > 0 then
-                    esp.box.Size = Vector2.new(w, h)
-                    esp.box.Position = Vector2.new(top.X - w / 2, top.Y)
-                    esp.box.Visible = true
-                    
-                    esp.name.Position = Vector2.new(top.X, top.Y - 14)
-                    esp.name.Text = plr.Name
-                    esp.name.Visible = true
-                else
-                    esp.box.Visible = false
-                    esp.name.Visible = false
-                end
-            else
-                esp.box.Visible = false
-                esp.name.Visible = false
-            end
-        else
-            esp.box.Visible = false
-            esp.name.Visible = false
-        end
-    end
-
-    -- [AUTO GACHA] Mở rương Divine tự động tích hợp từ code của bạn
-    if AutoGachaActive and ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("GameRemoteFunction") then
-        ReplicatedStorage.Events.GameRemoteFunction:InvokeServer("AttemptRollGachaChest", "Divine")
-    end
 end)
 
 -- =====================================================================
--- 6. HÀM TỐI ƯU HÓA FPS ĐỒ HỌA
+-- 5. HÀM TỐI ƯU HÓA FPS ĐỒ HỌA
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
     if OptimizeLevel >= 1 then
@@ -287,7 +247,7 @@ local function boostFPSSystem()
 end
 
 -- =====================================================================
--- 7. THÀNH PHẦN KÉO THẢ DI CHUYỂN MENU VÀ THANH SLIDER / BUTTONS KHỞI TẠO GIAO DIỆN
+-- 6. HÀM TẠO THANH KÉO SLIDER VÀ NÚT BẤM
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -346,9 +306,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================================================================
--- 8. THIẾT LẬP CÁC NÚT VÀ THANH TRƯỢT LÊN HAI CỘT MENU
+-- 7. THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
 
--- --- CỘT TRÁI (SLIDERS) ---
+-- --- CỘT TRÁI (SLIDERS CHỈ SỐ VÀ TẦM AOE) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
@@ -359,11 +319,11 @@ createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createSlider(LeftColumn, "Khoảng cách Aim/Aura", 90, 10, 500, 100, function(val)
+createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val)
     AimDistance = val
 end)
 
--- --- CỘT PHẢI (BUTTONS) ---
+-- --- CỘT PHẢI (BUTTONS TÍNH NĂNG) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
@@ -381,10 +341,11 @@ createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, functio
     end
 end)
 
--- NÚT ESP: Đã cập nhật thuật toán vẽ Box 2D siêu nhẹ theo code của bạn!
-createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Box ESP 2D", 70, function()
+-- NÚT BẤM ESP 3D MỚI
+createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Hộp 3D ESP", 70, function()
     HitboxEspActive = not HitboxEspActive
-    RightColumn.EspBtn.Text = HitboxEspActive and "Khung Box ESP 2D: ON" or "Bật/Tắt Khung Box ESP 2D"
+    RightColumn.EspBtn.Text = HitboxEspActive and "Khung Hộp 3D ESP: ON" or "Bật/Tắt Khung Hộp 3D ESP"
+    updateAllESP() -- Cập nhật trạng thái bật tắt ngay lập tức
 end)
 
 createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
@@ -392,19 +353,13 @@ createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, fu
     RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
--- NÚT SWORD: Sửa lỗi dùng lệnh AttemptWeaponHit độc hại quét sát thương toàn map từ code của bạn!
-createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Cực Mạnh", 140, function()
+-- NÚT BẤM KILL AURA AOE MỚI
+createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 140, function()
     KillAuraActive = not KillAuraActive
-    RightColumn.SwordBtn.Text = KillAuraActive and "Kill Aura Remote: ON" or "Kill Aura Vũ Khí Cực Mạnh"
+    RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
 end)
 
--- NÚT BONUS: Tự động mở hòm Divine rương thần thánh
-createButton(RightColumn, "GachaBtn", "Auto Gacha Chest: OFF", 175, function()
-    AutoGachaActive = not AutoGachaActive
-    RightColumn.GachaBtn.Text = AutoGachaActive and "Auto Gacha Chest: ON" or "Auto Gacha Chest: OFF"
-end)
-
--- 9. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
+-- 8. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
