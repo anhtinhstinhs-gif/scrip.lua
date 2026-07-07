@@ -1,0 +1,179 @@
+-- Khởi tạo Giao diện người dùng (GUI)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Button1 = Instance.new("TextButton")
+local Button2 = Instance.new("TextButton")
+local LogContainer = Instance.new("ScrollingFrame")
+local LogText = Instance.new("TextLabel")
+local CopyButton = Instance.new("TextButton")
+
+-- Cấu hình vị trí và màu sắc menu hình chữ nhật màu đen
+ScreenGui.Parent = game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Name = "LoggerMenu"
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Cho phép kéo giữ menu trên màn hình
+MainFrame.Parent = ScreenGui
+
+-- Nút 1: Sự kiện game
+Button1.Name = "EventButton"
+Button1.Size = UDim2.new(0, 145, 0, 40)
+Button1.Position = UDim2.new(0, 10, 0, 10)
+Button1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Button1.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button1.Text = "Sự Kiện Game: TẮT"
+Button1.Font = Enum.Font.SourceSansBold
+Button1.TextSize = 14
+Button1.Parent = MainFrame
+
+-- Nút 2: Người chơi
+Button2.Name = "PlayerButton"
+Button2.Size = UDim2.new(0, 145, 0, 40)
+Button2.Position = UDim2.new(0, 165, 0, 10)
+Button2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Button2.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button2.Text = "Người Chơi: TẮT"
+Button2.Font = Enum.Font.SourceSansBold
+Button2.TextSize = 14
+Button2.Parent = MainFrame
+
+-- Khu vực hiển thị Log hành động
+LogContainer.Size = UDim2.new(0, 300, 0, 300)
+LogContainer.Position = UDim2.new(0, 10, 0, 60)
+LogContainer.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+LogContainer.CanvasSize = UDim2.new(0, 0, 10, 0) -- Hỗ trợ cuộn chuột khi nhiều dòng
+LogContainer.Parent = MainFrame
+
+LogText.Size = UDim2.new(1, -10, 1, 0)
+LogText.Position = UDim2.new(0, 5, 0, 5)
+LogText.BackgroundTransparency = 1
+LogText.TextColor3 = Color3.fromRGB(0, 255, 100) -- Chữ màu xanh lá giống bảng điều khiển code
+LogText.TextXAlignment = Enum.TextXAlignment.Left
+LogText.TextYAlignment = Enum.TextYAlignment.Top
+LogText.Font = Enum.Font.Code
+LogText.TextSize = 12
+LogText.TextWrapped = true
+LogText.Text = "Hệ thống sẵn sàng...\n"
+LogText.Parent = LogContainer
+
+-- Nút Sao Chép Code đã lưu
+CopyButton.Size = UDim2.new(0, 300, 0, 30)
+CopyButton.Position = UDim2.new(0, 10, 0, 375)
+CopyButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+CopyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CopyButton.Text = "SAO CHÉP CODE ĐÃ LƯU"
+CopyButton.Font = Enum.Font.SourceSansBold
+CopyButton.TextSize = 14
+CopyButton.Parent = MainFrame
+
+-- Quản lý trạng thái và Biến chống lag
+local isLoggingEvents = false
+local isLoggingPlayer = false
+
+local lastEventString = ""
+local eventRepeatCount = 1
+
+local lastPlayerAction = ""
+local playerRepeatCount = 1
+local lastPosition = Vector3.new(0, 0, 0)
+
+-- Hàm tối ưu hiển thị danh sách (gộp dòng trùng lặp)
+local function updateLogDisplay()
+    -- Giữ thanh cuộn tự động đi xuống khi có dòng mới
+    LogContainer.CanvasPosition = Vector2.new(0, LogContainer.CanvasSize.Y.Offset)
+end
+
+-- Xử lý chức năng Nút 1 (Theo dõi sự kiện Click/UI/Mua vật phẩm)
+Button1.MouseButton1Click:Connect(function()
+    isLoggingEvents = not isLoggingEvents
+    if isLoggingEvents then
+        Button1.Text = "Sự Kiện Game: BẬT"
+        Button1.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        Button1.Text = "Sự Kiện Game: TẮT"
+        Button1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    end
+end)
+
+-- Xử lý chức năng Nút 2 (Theo dõi hành động di chuyển của người chơi)
+Button2.MouseButton1Click:Connect(function()
+    isLoggingPlayer = not isLoggingPlayer
+    if isLoggingPlayer then
+        Button2.Text = "Người Chơi: BẬT"
+        Button2.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        Button2.Text = "Người Chơi: TẮT"
+        Button2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    end
+end)
+
+-- Lắng nghe sự kiện tương tác chuột / kích hoạt nút trong trò chơi
+game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+    if not isLoggingEvents then return end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local currentEvent = "game:GetService('VirtualInputManager'):SendMouseButtonEvent(click)"
+        
+        if currentEvent == lastEventString then
+            eventRepeatCount = eventRepeatCount + 1
+            -- Cập nhật số lượng thay vì in dòng mới chống tràn bộ nhớ
+            local lines = string.split(LogText.Text, "\n")
+            if #lines > 1 then
+                lines[#lines - 1] = " - " .. currentEvent .. " -- [Lặp lại x" .. tostring(eventRepeatCount) .. "]"
+                LogText.Text = table.concat(lines, "\n")
+            end
+        else
+            lastEventString = currentEvent
+            eventRepeatCount = 1
+            LogText.Text = LogText.Text .. " - " .. currentEvent .. "\n"
+        end
+        updateLogDisplay()
+    end
+end)
+
+-- Cập nhật vị trí di chuyển liên tục từ RunService (Giảm lag bằng cách kiểm tra khoảng cách thay đổi)
+game:GetService("RunService").Heartbeat:Connect(function()
+    if not isLoggingPlayer then return end
+    
+    local player = game:GetService("Players").LocalPlayer
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local currentPos = player.Character.HumanoidRootPart.Position
+        -- Chỉ ghi nhận hành động nếu người chơi dịch chuyển một khoảng cách đáng kể (> 1.5 studs)
+        if (currentPos - lastPosition).Magnitude > 1.5 then
+            local actionString = "Di Chuyển Đến Vị Trí: " .. string.format("%.1f, %.1f, %.1f", currentPos.X, currentPos.Y, currentPos.Z)
+            
+            if lastPlayerAction == "Moving" then
+                playerRepeatCount = playerRepeatCount + 1
+                local lines = string.split(LogText.Text, "\n")
+                if #lines > 1 then
+                    lines[#lines - 1] = " - " .. actionString .. " -- [Cập nhật hành trình x" .. tostring(playerRepeatCount) .. "]"
+                    LogText.Text = table.concat(lines, "\n")
+                end
+            else
+                lastPlayerAction = "Moving"
+                playerRepeatCount = 1
+                LogText.Text = LogText.Text .. " - " .. actionString .. "\n"
+            end
+            lastPosition = currentPos
+            updateLogDisplay()
+        end
+    end
+end)
+
+-- Chức năng sao chép toàn bộ nhật ký sự kiện vào Clipboard của máy tính
+CopyButton.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(LogText.Text)
+        CopyButton.Text = "ĐÃ SAO CHÉP THÀNH CÔNG!"
+        task.wait(1)
+        CopyButton.Text = "SAO CHÉP CODE ĐÃ LƯU"
+    else
+        CopyButton.Text = "Executor không hỗ trợ sao chép!"
+    end
+end)
