@@ -1,13 +1,14 @@
--- MÃ NGUỒN PHIÊN BẢN V18.0 - MENU CHỮ NHẬT CẦU VỒNG - SIÊU TỐI ƯU FPS THEO CẤP SỐ NHÂN
+-- MÃ NGUỒN PHIÊN BẢN V19.0 - FIX KILL AURA & THÊM AIMBOT + SLIDER KHOẢNG CÁCH
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 -- 1. KHỞI TẠO GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileFPS_V18"
+ScreenGui.Name = "ModMenuMobileFPS_V19"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -29,11 +30,11 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT RỘNG NẰM NGANG
+-- KHUNG BẢNG MENU CHÍNH HÌNH CHỮ NHẬT (TĂNG CHIỀU CAO LÊN 280 ĐỂ THÊM TÍNH NĂNG)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 240)
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -120)
+MainFrame.Size = UDim2.new(0, 430, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -45,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Super FPS Boost Menu V18.0"
+Title.Text = "Advanced FPS & Aim Menu V19.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -80,19 +81,61 @@ local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 local SpinActive = false
 local HitboxEspActive = false
 local KillAuraActive = false
+local AimActive = false
 
-local OptimizeLevel = 0 -- Cấp độ giảm đồ họa (Cấp số nhân)
+local OptimizeLevel = 0 
 local currentSpeed = 16
 local currentJump = 50
+local AimDistance = 100 -- Khoảng cách Aim mặc định
 
--- Mở khóa giới hạn FPS của game lên mức tối đa
 if setfpscap then setfpscap(999) end
 
--- 2. HÀM SIÊU TỐI ƯU ĐỒ HỌA - TĂNG FPS THEO CẤP SỐ NHÂN
+-- HÀM TÌM NGƯỜI CHƠI GẦN NHẤT
+local function getClosestPlayer()
+    local closestTarget = nil
+    local maxDist = AimDistance
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                local targetPos = plr.Character.HumanoidRootPart.Position
+                local dist = (targetPos - myPos).Magnitude
+                if dist < maxDist then
+                    maxDist = dist
+                    closestTarget = plr.Character.HumanoidRootPart
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
+-- VÒNG LẶP HỆ THỐNG XỬ LÝ ĐỒNG BỘ AIM VÀ KILL AURA
+RunService.RenderStepped:Connect(function()
+    local target = getClosestPlayer()
+    
+    -- Xử lý Aimbot khóa góc nhìn mượt mà
+    if AimActive and target then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+    end
+
+    -- Xử lý Kill Aura nâng cao: Gửi tín hiệu kích hoạt trực tiếp lên Tool đang cầm
+    if KillAuraActive then
+        local char = LocalPlayer.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        if tool and target then
+            -- Quay nhân vật về hướng mục tiêu để Tool hoạt động chính xác
+            if char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(char.HumanoidRootPart.Position, Vector3.new(target.Position.X, char.HumanoidRootPart.Position.Y, target.Position.Z))
+            end
+            tool:Activate() -- Ép công cụ tự động click/kích hoạt liên tục
+        end
+    end
+end)
+
+-- HÀM SIÊU TỐI ƯU ĐỒ HỌA
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
-    
-    -- Mức 1: Giảm cơ bản thiết lập ánh sáng toàn cục
     if OptimizeLevel >= 1 then
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         Lighting.GlobalShadows = false
@@ -103,35 +146,29 @@ local function boostFPSSystem()
             end
         end
     end
-    
-    -- Mức 2 (Cấp số nhân): Xóa Texture, giảm chi tiết vật thể trong Workspace
     if OptimizeLevel >= 2 then
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Texture") or v:IsA("Decal") then
-                v:Destroy() -- Xóa decal dán tường để nhẹ ram
+                v:Destroy()
             elseif v:IsA("BasePart") then
-                v.Material = Enum.Material.SmoothPlastic -- Ép tất cả thành nhựa trơn cực nhẹ
+                v.Material = Enum.Material.SmoothPlastic
                 v.Reflectance = 0
             end
         end
     end
-    
-    -- Mức 3 (Cấp số tối đa): Tắt toàn bộ hiệu ứng hạt, khói lửa, hoạt ảnh hoạt họa động
     if OptimizeLevel >= 3 then
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Trail") or v:IsA("Beam") then
                 v.Enabled = false
             elseif v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
-                v:Destroy() -- Xóa quần áo nhân vật giảm tải render đồ họa đồ chơi
+                v:Destroy()
             end
         end
     end
-    
-    -- Cập nhật chữ trên nút bấm để theo dõi cấp độ
     RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- 3. KÉO THẢ DI CHUYỂN MENU
+-- KÉO THẢ DI CHUYỂN MENU
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -154,7 +191,7 @@ UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then update(input) end
 end)
 
--- 4. HÀM TẠO THANH KÉO SLIDER
+-- HÀM TẠO THANH KÉO SLIDER
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, 0, 0, 18)
@@ -205,7 +242,7 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
     end)
 end
 
--- 5. HÀM TẠO NÚT TÍNH NĂNG CHỨC NĂNG
+-- HÀM TẠO NÚT TÍNH NĂNG
 local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name
@@ -236,9 +273,9 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================================================================
--- 6. PHÂN CHIA NÚT LÊN MENU CHỮ NHẬT 
+-- 2 CỘT TÍNH NĂNG TRÊN BẢNG CHỮ NHẬT
 
--- --- CỘT TRÁI: SLIDER ĐIỀU KHIỂN CHỈ SỐ NHÂN VẬT ---
+-- --- CỘT TRÁI (SLIDERS) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
@@ -249,9 +286,13 @@ createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
--- --- CỘT PHẢI: NÚT TÍNH NĂNG CHÍNH MỚI & CŨ ---
+-- SLIDER MỚI THÊM: Điều chỉnh khoảng cách quét Aim / Aura
+createSlider(LeftColumn, "Khoảng cách Aim", 90, 10, 500, 100, function(val)
+    AimDistance = val
+end)
 
--- NÚT CHÍNH MỚI: BẤM NHIỀU LẦN SẼ TĂNG GIẢM ĐỒ HỌA MẠNH HƠN THEO CẤP SỐ NHÂN
+
+-- --- CỘT PHẢI (BUTTONS) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
@@ -273,7 +314,6 @@ createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, functio
 end)
 
 createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70, function()
-    if GlitchDisasterActive then return end
     HitboxEspActive = not HitboxEspActive
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -296,22 +336,20 @@ createButton(RightColumn, "EspBtn", "Bật/Tắt Hitbox đặc trắng ESP", 70,
     end
 end)
 
-createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 105, function()
-    KillAuraActive = not KillAuraActive
-    local char = LocalPlayer.Character
-    local tool = char and char:FindFirstChildOfClass("Tool")
-    if tool and tool:FindFirstChild("Handle") then
-        if KillAuraActive then
-            tool.Handle.Size = Vector3.new(5000, 5000, 5000)
-            tool.Handle.CanCollide = false
-        else
-            tool.Handle.Size = Vector3.new(1, 1, 1)
-            tool.Handle.CanCollide = true
-        end
-    end
+-- NÚT MỚI: Bật/Tắt Tự động ngắm Aim khóa mục tiêu
+createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
+    AimActive = not AimActive
+    RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
--- 7. VÒNG LẶP ĐỔI MÀU CẦU VỒNG (RAINBOW EFFECT) ĐỒNG BỘ
+-- NÚT SỬA LỖI: Kill Aura kích hoạt Tool chuẩn xác
+createButton(RightColumn, "SwordBtn", "Kill Aura Vũ Khí Toàn Map", 140, function()
+    KillAuraActive = not KillAuraActive
+    RightColumn.SwordBtn.Text = KillAuraActive and "Kill Aura Toàn Map: ON" or "Kill Aura Vũ Khí Toàn Map"
+end)
+
+
+-- 4. VÒNG LẶP CẦU VỒNG (RAINBOW EFFECT)
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
