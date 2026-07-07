@@ -1,0 +1,116 @@
+-- [[ OBFUSCATED BY PREMIUM HUB EXPERT V20.0 ]]
+-- [[ WARNING: DO NOT MODIFY THIS FILE - IT WILL BREAK THE SCRIPT ]]
+
+local _O = {
+    [1] = function(s) return s:gsub('..', function(cc) return string.char(tonumber(cc, 16)) end) end,
+    [2] = {0x49, 0x6e, 0x76, 0x65, 0x6e, 0x74, 0x6f, 0x72, 0x79},
+    [3] = {0x5f, 0x5f, 0x69, 0x6e, 0x64, 0x65, 0x78},
+    [4] = {0x48, 0x65, 0x72, 0x6f},
+    [5] = {0x48, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x20, 0x50, 0x6f, 0x74, 0x69, 0x6f, 0x6e},
+    [6] = {0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e},
+    [7] = {0x4d, 0x61, 0x6e, 0x61, 0x20, 0x43, 0x72, 0x79, 0x73, 0x74, 0x61, 0x6c},
+    [8] = {0x72, 0x61, 0x72, 0x65},
+    [9] = {0x44, 0x72, 0x61, 0x67, 0x6f, 0x6e, 0x20, 0x53, 0x63, 0x61, 0x6c, 0x65},
+    [10] = {0x6c, 0x65, 0x67, 0x65, 0x6e, 0x64, 0x61, 0x72, 0x79},
+    [11] = {0x49, 0x72, 0x6f, 0x6e, 0x20, 0x53, 0x77, 0x6f, 0x72, 0x64},
+    [12] = {0x65, 0x70, 0x69, 0x63},
+    [13] = {0x47, 0x6f, 0x6c, 0x64, 0x20, 0x43, 0x6f, 0x69, 0x6e, 0x73}
+}
+
+local function _D(idx)
+    local tbl = _O[idx]
+    local str = ""
+    for i = 1, #tbl do str = str .. string.char(tbl[i]) end
+    return str
+end
+
+local _V1 = {}
+_V1[_D(3)] = _V1
+
+function _V1.new(_V2, _V3)
+    local self = setmetatable({}, _V1)
+    self.items = {}
+    self.maxSlots = _V2 or 20
+    self.playerName = _V3 or "Player"
+    self.gold = 0
+    self.locked = false
+    return self
+end
+
+function _V1:addItem(_V4, _V5, _V6)
+    if self.locked then return false, _O[1]("496e76656e746f7279206973206c6f636b6564") end
+    local _V7 = #self.items + 1
+    if _V7 > self.maxSlots then return false, _O[1]("496e76656e746f72792066756c6c") end
+    local _V8 = {
+        name = _V4,
+        qty = _V5 or 1,
+        rarity = _V6 or _D(6),
+        timestamp = os.time(),
+        id = math.random(1000, 9999)
+    }
+    local _V9 = 1.0
+    if _V6 == _D(8) then _V9 = 1.5
+    elseif _V6 == _D(12) then _V9 = 2.0
+    elseif _V6 == _D(10) then _V9 = 3.0 end
+    _V8.value = math.floor(_V5 * 10 * _V9)
+    table.insert(self.items, _V8)
+    return true, _O[1]("416464656420") .. _V4
+end
+
+function _V1:getTotalValue()
+    local _V10 = self.gold
+    local _V11 = 0
+    for i = 1, #self.items do
+        local _V12 = self.items[i]
+        _V10 = _V10 + (_V12.value or 0)
+        _V11 = _V11 + 1
+    end
+    return _V10, _V11
+end
+
+function _V1:findByRarity(_V13)
+    local _V14 = {}
+    local _V15 = string.lower(_V13)
+    for _, _V16 in pairs(self.items) do
+        if string.lower(_V16.rarity) == _V15 then
+            table.insert(_V14, _V16.name)
+        end
+    end
+    return _V14
+end
+
+function _V1:sellItem(_V17)
+    if _V17 < 1 or _V17 > #self.items then return false end
+    local _V18 = table.remove(self.items, _V17)
+    local _V19 = math.floor(_V18.value * 0.75)
+    self.gold = self.gold + _V19
+    return true, _V19
+end
+
+function _V1:safeTransaction(_V20)
+    self.locked = true
+    local _V21, _V22 = pcall(function() return _V20(self) end)
+    self.locked = false
+    return _V21, _V22
+end
+
+-- THỰC THI CHƯƠNG TRÌNH ĐÃ MÃ HÓA KHÔNG THỂ PHÁT HIỆN LOGIC GỐC
+local _P = _V1.new(25, _D(4))
+_P:addItem(_D(5), 5, _D(6))
+_P:addItem(_D(7), 3, _D(8))
+_P:addItem(_D(9), 1, _D(10))
+_P:addItem(_D(11), 1, _D(12))
+_P:addItem(_D(13), 100, _D(6))
+
+local _R1, _R2 = _P:getTotalValue()
+print(_O[1]("496e76656e746f72792056616c75653a20") .. _R1 .. _O[1]("20676f6c64"))
+print(_O[1]("546f74616c204974656d733a20") .. _R2)
+
+local _L = _P:findByRarity(_D(10))
+print(_O[1]("4c6567656e64617279204974656d733a20") .. table.concat(_L, ", "))
+
+local _S, _PR = _P:safeTransaction(function(inv) return inv:sellItem(2) end)
+if _S then
+    print(_O[1]("536f6c64206974656d20666f7220") .. _PR .. _O[1]("20676f6c64"))
+    print(_O[1]("4e65772042616c616e63653a20") .. _P.gold .. _O[1]("20676f6c64"))
+end
