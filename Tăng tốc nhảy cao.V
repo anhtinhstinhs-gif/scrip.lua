@@ -1,4 +1,4 @@
--- MÃ NGUỒN PHIÊN BẢN V21.0 - BOX ESP 3D (R6/R15) & AOE KILL AURA KHỔNG LỒ (XÓA GACHA)
+-- MÃ NGUỒN PHIÊN BẢN V21.2 - TÍCH HỢP WALL HOP NGANG & DỌC (ĐÃ KHỬ OBFUSCATE)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Hạ chiều cao xuống 250 vì đã bỏ Gacha)
+-- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Nâng chiều cao lên 280 để vừa 2 nút Wall Hop mới)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuMobileFPS_V21"
 ScreenGui.ResetOnSpawn = false
@@ -33,8 +33,8 @@ OpenCorner.Parent = OpenButton
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 250)
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -125)
+MainFrame.Size = UDim2.new(0, 430, 0, 280) -- Tăng chiều cao lên 280
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -140)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "AOE Kill & 3D ESP Menu V21.0"
+Title.Text = "AOE Kill & 3D ESP Menu V21.2"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -83,10 +83,18 @@ local HitboxEspActive = false
 local KillAuraActive = false     
 local AimActive = false
 
+-- Biến logic Wall Hop được trích xuất và tối ưu
+local WallHopNgang = false
+local WallHopDoc = false
+local WallHopCooldown = false
+local LastWallTime = 0
+local LastWallInstance = nil
+local CurrentTargetWall = nil
+
 local OptimizeLevel = 0 
 local currentSpeed = 16
 local currentJump = 50
-local AimDistance = 150 -- Tầm quét AOE mặc định rộng hơn
+local AimDistance = 150
 
 if setfpscap then setfpscap(999) end
 
@@ -95,7 +103,6 @@ if setfpscap then setfpscap(999) end
 local function apply3DESP(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            -- Xóa ESP cũ nếu có
             local oldEsp = v:FindFirstChild("3DESP_Box")
             if oldEsp then oldEsp:Destroy() end
             
@@ -105,7 +112,7 @@ local function apply3DESP(character)
                 box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04)
                 box.AlwaysOnTop = true
                 box.ZIndex = 5
-                box.Color3 = Color3.fromRGB(255, 255, 255) -- Khung màu trắng đặc trưng bạn thích
+                box.Color3 = Color3.fromRGB(255, 255, 255)
                 box.Transparency = 0.4
                 box.Adornee = v
                 box.Parent = v
@@ -114,7 +121,6 @@ local function apply3DESP(character)
     end
 end
 
--- Hàm cập nhật trạng thái ESP toàn phòng khi bấm nút
 local function updateAllESP()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
@@ -123,12 +129,69 @@ local function updateAllESP()
     end
 end
 
--- Tự động áp dụng khi người chơi khác hồi sinh lại nhân vật mới
 Players.PlayerAdded:Connect(function(plr)
     plr.CharacterAdded:Connect(function(char)
-        task.wait(0.5) -- Chờ nhân vật tải xong cấu trúc R6/R15
+        task.wait(0.5)
         if HitboxEspActive then apply3DESP(char) end
     end)
+end)
+
+-- =====================================================================
+-- LOGIC XỬ LÝ NHẢY WALL HOP (TRÍCH XUẤT TỪ BẢO HUB VÀ XÓA BỎ CAMERA GLITCH ĐỂ TRÁNH RUNG LẮC MENU)
+local function executeWallJump()
+    if WallHopCooldown then return end
+    WallHopCooldown = true
+    
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChild("Humanoid")
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not hrp then
+        WallHopCooldown = false
+        return
+    end
+    
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    if hrp:IsA("BasePart") then
+        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
+    end
+    
+    WallHopCooldown = false
+end
+
+-- VÒNG LẶP KIỂM TRA VA CHẠM TƯỜNG (HEARTBEAT)
+RunService.Heartbeat:Connect(function()
+    if not WallHopNgang and not WallHopDoc then return end
+    
+    local character = LocalPlayer.Character
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    -- Quét tia vật lý về phía trước góc nhìn của camera trong phạm vi 3 studs
+    local raycastResult = workspace:Raycast(hrp.Position, Camera.CFrame.LookVector * 3, raycastParams)
+    
+    if raycastResult and raycastResult.Instance.CanCollide then
+        local hitPart = raycastResult.Instance
+        if LastWallInstance and (LastWallInstance ~= hitPart) then
+            local delayTime = WallHopDoc and 0.3 or 0.05 -- Wall Hop Dọc tăng delay để leo thẳng đứng tốt hơn
+            
+            if (hitPart ~= CurrentTargetWall) and ((os.clock() - LastWallTime) > delayTime) then
+                LastWallTime = os.clock()
+                CurrentTargetWall = hitPart
+                executeWallJump()
+            end
+        end
+        LastWallInstance = hitPart
+    else
+        LastWallInstance = nil
+        if not raycastResult then
+            CurrentTargetWall = nil
+        end
+    end
 end)
 
 -- =====================================================================
@@ -152,16 +215,31 @@ local function getClosestPlayer()
 end
 
 -- =====================================================================
--- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ AOE KILL & AIM)
+-- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ AOE KILL & AIM & WALK SPEED)
 RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local targetHumanoid = LocalPlayer.Character.Humanoid
+        if targetHumanoid.WalkSpeed ~= currentSpeed then
+            targetHumanoid.WalkSpeed = currentSpeed
+        end
+        if targetHumanoid.UseJumpPower then
+            if targetHumanoid.JumpPower ~= currentJump then
+                targetHumanoid.JumpPower = currentJump
+            end
+        else
+            local calculatedHeight = (currentJump * currentJump) / (2 * workspace.Gravity)
+            if math.abs(targetHumanoid.JumpHeight - calculatedHeight) > 1 then
+                targetHumanoid.JumpHeight = calculatedHeight
+            end
+        end
+    end
+
     local target = getClosestPlayer()
     
-    -- [AIMBOT] Khóa góc nhìn camera mượt mà
     if AimActive and target then
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
     end
 
-    -- [KILL AURA AOE DIỆN RỘNG] Phóng to vùng quét và gửi gói tin sát thương liên tục
     if KillAuraActive and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local myTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
@@ -173,10 +251,8 @@ RunService.RenderStepped:Connect(function()
                     local enemyHrp = plr.Character.HumanoidRootPart
                     local dist = (enemyHrp.Position - myHrp.Position).Magnitude
                     
-                    -- Kiểm tra nếu mục tiêu nằm trong tầm slider AOE cấu hình
                     if dist <= AimDistance then
                         local dir = (enemyHrp.Position - myHrp.Position).Unit
-                        -- Gửi gói tin phá vỡ mọi khoảng cách, tăng kích thước vùng đánh (hitboxSize) lên 100x100x100 AOE
                         remote:InvokeServer(
                             "AttemptWeaponHit",
                             {
@@ -185,7 +261,7 @@ RunService.RenderStepped:Connect(function()
                                 shouldLock = true,
                                 shouldSlow = false,
                                 attackCooldown = 0,
-                                hitboxSize = Vector3.new(100, 100, 100), -- TẦM ĐÁNH AOE KHỔNG LỒ TOÀN DIỆN
+                                hitboxSize = Vector3.new(100, 100, 100),
                                 lungeKnockback = 35,
                                 slowTime = 0,
                                 slowMult = 1,
@@ -323,6 +399,25 @@ createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val)
     AimDistance = val
 end)
 
+-- NÚT BẤM THÀNH PHẦN WALL HOP MỚI ĐƯỢC THÊM VÀO PHÍA DƯỚI CỘT TRÁI ĐỂ KHÔNG LÀM LỆCH GIAO DIỆN CŨ
+local WallHopNgangBtn = createButton(LeftColumn, "WallHopNgangBtn", "Wall Hop Ngang: OFF", 140, function()
+    WallHopNgang = not WallHopNgang
+    if WallHopNgang then
+        WallHopDoc = false
+        MainFrame.LeftColumn.WallHopDocBtn.Text = "Wall Hop Dọc: OFF"
+    end
+    LeftColumn.WallHopNgangBtn.Text = WallHopNgang and "Wall Hop Ngang: ON" or "Wall Hop Ngang: OFF"
+end)
+
+local WallHopDocBtn = createButton(LeftColumn, "WallHopDocBtn", "Wall Hop Dọc: OFF", 175, function()
+    WallHopDoc = not WallHopDoc
+    if WallHopDoc then
+        WallHopNgang = false
+        MainFrame.LeftColumn.WallHopNgangBtn.Text = "Wall Hop Ngang: OFF"
+    end
+    LeftColumn.WallHopDocBtn.Text = WallHopDoc and "Wall Hop Dọc: ON" or "Wall Hop Dọc: OFF"
+end)
+
 -- --- CỘT PHẢI (BUTTONS TÍNH NĂNG) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
@@ -341,11 +436,10 @@ createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, functio
     end
 end)
 
--- NÚT BẤM ESP 3D MỚI
 createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Hộp 3D ESP", 70, function()
     HitboxEspActive = not HitboxEspActive
     RightColumn.EspBtn.Text = HitboxEspActive and "Khung Hộp 3D ESP: ON" or "Bật/Tắt Khung Hộp 3D ESP"
-    updateAllESP() -- Cập nhật trạng thái bật tắt ngay lập tức
+    updateAllESP()
 end)
 
 createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
@@ -353,7 +447,6 @@ createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, fu
     RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
--- NÚT BẤM KILL AURA AOE MỚI
 createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 140, function()
     KillAuraActive = not KillAuraActive
     RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
@@ -364,10 +457,4 @@ local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
     GlobalRainbowColor = Color3.fromHSV(hue, 1, 1)
-    for _, object in ipairs(RainbowObjects) do
-        if object and object:IsA("GuiObject") then object.BackgroundColor3 = GlobalRainbowColor end
-    end
-end)
-
-MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
-OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
+    for _, 
