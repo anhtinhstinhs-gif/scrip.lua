@@ -1,0 +1,508 @@
+-- Chuyển đổi giao diện sang tỷ lệ Scale để tự động co giãn phù hợp với màn hình điện thoại nhỏ
+local drag = nil
+local start = nil
+local pos = nil
+
+local a = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local remotes = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+local misc = Instance.new("Folder")
+local Examples = Instance.new("Frame")
+local examplefunction = Instance.new("TextButton")
+local text = Instance.new("TextLabel")
+local img = Instance.new("ImageLabel")
+local exampleevent = Instance.new("TextButton")
+local img_2 = Instance.new("ImageLabel")
+local text_2 = Instance.new("TextLabel")
+local stuff = Instance.new("Frame")
+local output = Instance.new("TextBox")
+local stuff_2 = Instance.new("ScrollingFrame")
+local clearlogs = Instance.new("TextButton")
+local copy = Instance.new("TextButton")
+local run = Instance.new("TextButton")
+local clearexcludions = Instance.new("TextButton")
+local exclude = Instance.new("TextButton")
+local scrpt = Instance.new("TextButton")
+local minimize = Instance.new("TextButton")
+local close = Instance.new("TextButton")
+local TextLabel = Instance.new("TextLabel")
+local UIPadding = Instance.new("UIPadding")
+
+a.Name = "AlqvirqqRemoteSpy"
+a.Parent = gethui()
+a.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Điều chỉnh kích thước và vị trí Frame chính theo dạng Scale (%) thay vì Offset (pixel) để hiển thị tốt trên Mobile
+Frame.Parent = a
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderColor3 = Color3.fromRGB(60, 60, 60)
+Frame.BorderSizePixel = 1
+Frame.Position = UDim2.new(0.05, 0, 0.05, 0)
+Frame.Size = UDim2.new(0.9, 0, 0.9, 0)
+Frame.ClipsDescendants = true
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Parent = Frame
+titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+titleBar.BorderSizePixel = 0
+titleBar.Size = UDim2.new(1, 0, 0, 35) -- Tăng nhẹ chiều cao cho dễ thao tác chạm bằng ngón tay
+
+TextLabel.Parent = titleBar
+TextLabel.BackgroundTransparency = 1
+TextLabel.Position = UDim2.new(0, 10, 0, 0)
+TextLabel.Size = UDim2.new(0.6, 0, 1, 0)
+TextLabel.Font = Enum.Font.GothamBold
+TextLabel.Text = "Quantum Q - RemoteSpy v1"
+TextLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+TextLabel.TextSize = 11 -- Thu nhỏ cỡ chữ phù hợp màn hình nhỏ
+TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+minimize.Parent = titleBar
+minimize.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+minimize.BorderSizePixel = 0
+minimize.Position = UDim2.new(1, -80, 0, 3)
+minimize.Size = UDim2.new(0, 35, 0, 29)
+minimize.Font = Enum.Font.GothamBold
+minimize.Text = "−"
+minimize.TextColor3 = Color3.fromRGB(220, 220, 220)
+minimize.TextSize = 16
+
+close.Parent = titleBar
+close.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+close.BorderSizePixel = 0
+close.Position = UDim2.new(1, -40, 0, 3)
+close.Size = UDim2.new(0, 35, 0, 29)
+close.Font = Enum.Font.GothamBold
+close.Text = "X"
+close.TextColor3 = Color3.fromRGB(255, 255, 255)
+close.TextSize = 12
+
+-- Main Content Area
+local mainContent = Instance.new("Frame")
+mainContent.Name = "MainContent"
+mainContent.Parent = Frame
+mainContent.BackgroundTransparency = 1
+mainContent.Position = UDim2.new(0, 0, 0, 35)
+mainContent.Size = UDim2.new(1, 0, 1, -35)
+
+-- Left Panel - Remotes List (Chuyển tỷ lệ sang dạng Scale động)
+local leftPanel = Instance.new("Frame")
+leftPanel.Name = "LeftPanel"
+leftPanel.Parent = mainContent
+leftPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+leftPanel.BorderSizePixel = 0
+leftPanel.Size = UDim2.new(0.35, 0, 1, 0)
+
+local remotesHeader = Instance.new("TextLabel")
+remotesHeader.Name = "RemotesHeader"
+remotesHeader.Parent = leftPanel
+remotesHeader.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+remotesHeader.BorderSizePixel = 0
+remotesHeader.Size = UDim2.new(1, 0, 0, 25)
+remotesHeader.Font = Enum.Font.GothamBold
+remotesHeader.Text = "REMOTES"
+remotesHeader.TextColor3 = Color3.fromRGB(220, 220, 220)
+remotesHeader.TextSize = 10
+
+remotes.Parent = leftPanel
+remotes.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+remotes.BorderSizePixel = 0
+remotes.Position = UDim2.new(0, 0, 0, 25)
+remotes.Size = UDim2.new(1, 0, 1, -25)
+remotes.ScrollBarThickness = 4
+remotes.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+remotes.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+UIListLayout.Parent = remotes
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 3)
+
+UIPadding.Parent = remotes
+UIPadding.PaddingLeft = UDim.new(0, 3)
+UIPadding.PaddingRight = UDim.new(0, 3)
+UIPadding.PaddingTop = UDim.new(0, 3)
+UIPadding.PaddingBottom = UDim.new(0, 3)
+
+-- Right Panel - Output
+local rightPanel = Instance.new("Frame")
+rightPanel.Name = "RightPanel"
+rightPanel.Parent = mainContent
+rightPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+rightPanel.BorderSizePixel = 0
+rightPanel.Position = UDim2.new(0.35, 2, 0, 0)
+rightPanel.Size = UDim2.new(0.65, -2, 1, 0)
+
+local outputHeader = Instance.new("TextLabel")
+outputHeader.Name = "OutputHeader"
+outputHeader.Parent = rightPanel
+outputHeader.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+outputHeader.BorderSizePixel = 0
+outputHeader.Size = UDim2.new(1, 0, 0, 25)
+outputHeader.Font = Enum.Font.GothamBold
+outputHeader.Text = "OUTPUT"
+outputHeader.TextColor3 = Color3.fromRGB(220, 220, 220)
+outputHeader.TextSize = 10
+
+output.Parent = rightPanel
+output.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+output.BorderColor3 = Color3.fromRGB(60, 60, 60)
+output.BorderSizePixel = 1
+output.Position = UDim2.new(0, 0, 0, 25)
+output.Size = UDim2.new(1, 0, 0.55, -25) -- Tối ưu không gian cho bảng nút bấm phía dưới trên màn hình cảm ứng
+output.Font = Enum.Font.RobotoMono
+output.Text = ""
+output.ClearTextOnFocus = false
+output.TextColor3 = Color3.fromRGB(220, 220, 220)
+output.TextSize = 10
+output.TextXAlignment = Enum.TextXAlignment.Left
+output.TextYAlignment = Enum.TextYAlignment.Top
+output.TextWrapped = true
+
+-- Controls Panel
+local controlsPanel = Instance.new("Frame")
+controlsPanel.Name = "ControlsPanel"
+controlsPanel.Parent = rightPanel
+controlsPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+controlsPanel.BorderSizePixel = 0
+controlsPanel.Position = UDim2.new(0, 0, 0.55, 2)
+controlsPanel.Size = UDim2.new(1, 0, 0.45, -2)
+
+-- Control Buttons Grid (Sắp xếp lại dạng lưới thích ứng Mobile)
+local buttonGrid = Instance.new("UIGridLayout")
+buttonGrid.Parent = controlsPanel
+buttonGrid.CellPadding = UDim2.new(0, 3, 0, 3)
+buttonGrid.CellSize = UDim2.new(0.5, -3, 0.3, -3)
+buttonGrid.StartCorner = Enum.StartCorner.TopLeft
+buttonGrid.SortOrder = Enum.SortOrder.LayoutOrder
+
+local padding = Instance.new("UIPadding")
+padding.Parent = controlsPanel
+padding.PaddingLeft = UDim.new(0, 3)
+padding.PaddingRight = UDim.new(0, 3)
+padding.PaddingTop = UDim.new(0, 3)
+padding.PaddingBottom = UDim.new(0, 3)
+
+-- Control Buttons
+clearlogs.Parent = controlsPanel
+clearlogs.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+clearlogs.BorderSizePixel = 0
+clearlogs.Font = Enum.Font.Gotham
+clearlogs.Text = "Clear Logs"
+clearlogs.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearlogs.TextSize = 10
+
+copy.Parent = controlsPanel
+copy.BackgroundColor3 = Color3.fromRGB(70, 70, 150)
+copy.BorderSizePixel = 0
+copy.Font = Enum.Font.Gotham
+copy.Text = "Copy Output"
+copy.TextColor3 = Color3.fromRGB(255, 255, 255)
+copy.TextSize = 10
+
+run.Parent = controlsPanel
+run.BackgroundColor3 = Color3.fromRGB(60, 150, 60)
+run.BorderSizePixel = 0
+run.Font = Enum.Font.Gotham
+run.Text = "Run Output"
+run.TextColor3 = Color3.fromRGB(255, 255, 255)
+run.TextSize = 10
+
+clearexcludions.Parent = controlsPanel
+clearexcludions.BackgroundColor3 = Color3.fromRGB(150, 70, 70)
+clearexcludions.BorderSizePixel = 0
+clearexcludions.Font = Enum.Font.Gotham
+clearexcludions.Text = "Clear Excl"
+clearexcludions.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearexcludions.TextSize = 10
+
+exclude.Parent = controlsPanel
+exclude.BackgroundColor3 = Color3.fromRGB(150, 100, 60)
+exclude.BorderSizePixel = 0
+exclude.Font = Enum.Font.Gotham
+exclude.Text = "Exclude"
+exclude.TextColor3 = Color3.fromRGB(255, 255, 255)
+exclude.TextSize = 10
+
+scrpt.Parent = controlsPanel
+scrpt.BackgroundColor3 = Color3.fromRGB(80, 80, 180)
+scrpt.BorderSizePixel = 0
+scrpt.Font = Enum.Font.Gotham
+scrpt.Text = "Make Script"
+scrpt.TextColor3 = Color3.fromRGB(255, 255, 255)
+scrpt.TextSize = 10
+
+-- Example templates
+misc.Name = "misc"
+misc.Parent = Frame
+
+Examples.Name = "Examples"
+Examples.Parent = misc
+Examples.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Examples.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Examples.BorderSizePixel = 0
+Examples.Position = UDim2.new(1.05, 0, 0.2, 0)
+Examples.Size = UDim2.new(0, 100, 0, 100)
+Examples.Visible = false
+
+examplefunction.Name = "examplefunction"
+examplefunction.Parent = Examples
+examplefunction.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+examplefunction.BorderColor3 = Color3.fromRGB(70, 70, 70)
+examplefunction.BorderSizePixel = 1
+examplefunction.Size = UDim2.new(1, 0, 0, 30)
+examplefunction.Font = Enum.Font.SourceSans
+examplefunction.Text = ""
+examplefunction.TextColor3 = Color3.fromRGB(0, 0, 0)
+examplefunction.TextSize = 14.000
+examplefunction.AutoButtonColor = false
+
+text.Name = "text"
+text.Parent = examplefunction
+text.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+text.BackgroundTransparency = 1.000
+text.BorderColor3 = Color3.fromRGB(0, 0, 0)
+text.BorderSizePixel = 0
+text.Position = UDim2.new(0, 30, 0, 0)
+text.Size = UDim2.new(1, -30, 1, 0)
+text.Font = Enum.Font.Gotham
+text.Text = "RemoteFunction"
+text.TextColor3 = Color3.fromRGB(220, 220, 220)
+text.TextSize = 10
+text.TextXAlignment = Enum.TextXAlignment.Left
+
+img.Name = "img"
+img.Parent = examplefunction
+img.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+img.BackgroundTransparency = 1.000
+img.BorderColor3 = Color3.fromRGB(0, 0, 0)
+img.BorderSizePixel = 0
+img.Position = UDim2.new(0, 5, 0, 5)
+img.Size = UDim2.new(0, 20, 0, 20)
+img.Image = "rbxassetid://13936070051"
+
+exampleevent.Name = "exampleevent"
+exampleevent.Parent = Examples
+exampleevent.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+exampleevent.BorderColor3 = Color3.fromRGB(70, 70, 70)
+exampleevent.BorderSizePixel = 1
+exampleevent.Size = UDim2.new(1, 0, 0, 30)
+exampleevent.Font = Enum.Font.SourceSans
+exampleevent.Text = ""
+exampleevent.TextColor3 = Color3.fromRGB(0, 0, 0)
+exampleevent.TextSize = 14.000
+exampleevent.AutoButtonColor = false
+
+img_2.Name = "img"
+img_2.Parent = exampleevent
+img_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+img_2.BackgroundTransparency = 1.000
+img_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
+img_2.BorderSizePixel = 0
+img_2.Position = UDim2.new(0, 5, 0, 5)
+img_2.Size = UDim2.new(0, 20, 0, 20)
+img_2.Image = "rbxassetid://13936075598"
+
+text_2.Name = "text"
+text_2.Parent = exampleevent
+text_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+text_2.BackgroundTransparency = 1.000
+text_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
+text_2.BorderSizePixel = 0
+text_2.Position = UDim2.new(0, 30, 0, 0)
+text_2.Size = UDim2.new(1, -30, 1, 0)
+text_2.Font = Enum.Font.Gotham
+text_2.Text = "RemoteEvent"
+text_2.TextColor3 = Color3.fromRGB(220, 220, 220)
+text_2.TextSize = 10
+text_2.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Drag / Touch functionality 
+local function update(input)
+	local delta = input.Position - start
+	local position = UDim2.new(pos.X.Scale, pos.X.Offset + delta.X,
+	pos.Y.Scale, pos.Y.Offset + delta.Y)
+	game:GetService("TweenService"):Create(Frame, TweenInfo.new(0.1), {Position = position}):Play()
+end
+
+titleBar.InputBegan:Connect(function(input)
+	if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then 
+		drag = true
+		start = input.Position
+		pos = Frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				drag = false
+			end
+		end)
+	end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		if drag then
+			update(input)
+		end
+	end
+end)
+
+-- Remote Spy Logic
+local logs = {}
+local excluded = {}
+local selectedRemote = nil
+
+local function fixargs(...)
+    local args = {...}
+    local strings = {}
+
+    local function serialize(arg)
+        if typeof(arg) == "string" then
+            return string.format("\"%s\"", arg)
+        elseif typeof(arg) == "Instance" then
+            return string.format("game:GetService(\"%s\")", arg.ClassName) .. (arg == game and "" or string.format(":WaitForChild(\"%s\")", arg.Name))
+        elseif typeof(arg) == "table" then
+            local serialized = {}
+            for k, v in pairs(arg) do
+                if typeof(k) == "string" then
+                    table.insert(serialized, string.format("[\"%s\"] = %s", k, serialize(v)))
+                else
+                    table.insert(serialized, string.format("[%s] = %s", k, serialize(v)))
+                end
+            end
+            return "{" .. table.concat(serialized, ", ") .. "}"
+        else
+            return tostring(arg)
+        end
+    end
+
+    for _, v in ipairs(args) do
+        table.insert(strings, serialize(v))
+    end
+
+    return "local args = {\n    " .. table.concat(strings, ",\n    ") .. "\n}"
+end
+
+local function log(remote, method, ...)
+    if excluded[remote] then
+        return
+    end
+
+    local args = fixargs(...)
+    local fullPath = "game."..remote:GetFullName()
+    local txt = string.format("%s\n%s:%s(unpack(args))", args, fullPath, method)
+
+    if not logs[remote] then
+        local button = (method == "FireClient" and exampleevent or examplefunction):Clone()
+        button.text.Text = remote.Name
+        button.Visible = true
+        button.Parent = remotes
+        
+        remotes.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+
+        button.MouseButton1Click:Connect(function()
+            if selectedRemote then
+                selectedRemote.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            end
+            
+            selectedRemote = button
+            button.BackgroundColor3 = Color3.fromRGB(70, 100, 150)
+            output.Text = txt
+        end)
+
+        logs[remote] = button
+    end
+end
+
+for _, remote in ipairs(game:GetDescendants()) do
+    if remote:IsA("RemoteEvent") then
+        remote.OnClientEvent:Connect(function(...)
+            log(remote, "FireClient", ...)
+        end)
+    elseif remote:IsA("RemoteFunction") then
+        remote.OnClientInvoke = function(...)
+            log(remote, "InvokeClient", ...)
+        end
+    end
+end
+
+game.DescendantAdded:Connect(function(descendant)
+    if descendant:IsA("RemoteEvent") then
+        descendant.OnClientEvent:Connect(function(...)
+            log(descendant, "FireClient", ...)
+        end)
+    elseif descendant:IsA("RemoteFunction") then
+        descendant.OnClientInvoke = function(...)
+            log(descendant, "InvokeClient", ...)
+        end
+    end
+end)
+
+local function generate()
+    local final = string.format("local args = {...}\n%s", output.Text:gsub("local args = {[^}]+}", ""))
+    output.Text = final
+end
+
+exclude.MouseButton1Click:Connect(function()
+    if selectedRemote then
+        for remote, button in pairs(logs) do
+            if button == selectedRemote then
+                excluded[remote] = true
+                selectedRemote:Destroy()
+                selectedRemote = nil
+                output.Text = ""
+                break
+            end
+        end
+    end
+end)
+
+copy.MouseButton1Click:Connect(function()
+    if output.Text ~= "" then
+        setclipboard(output.Text)
+    end
+end)
+
+run.MouseButton1Click:Connect(function()
+    if output.Text ~= "" then
+        local success, err = pcall(function()
+            loadstring(output.Text)()
+        end)
+        if not success then
+            output.Text = output.Text .. "\n\n-- Error: " .. err
+        end
+    end
+end)
+
+scrpt.MouseButton1Click:Connect(function()
+    if output.Text ~= "" then
+        generate()
+    end
+end)
+
+clearlogs.MouseButton1Click:Connect(function()
+    output.Text = ""
+    for _, child in ipairs(remotes:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    logs = {}
+    excluded = {}
+    selectedRemote = nil
+    remotes.CanvasSize = UDim2.new(0, 0, 0, 0)
+end)
+
+clearexcludions.MouseButton1Click:Connect(function()
+    excluded = {}
+end)
+
+close.MouseButton1Click:Connect(function()
+    a:Destroy()
+end)
+
+minimize.MouseButton1Click:Connect(function()
+    mainContent.Visible = not mainContent.Visible
+    Frame.Size = mainContent.Visible and UDim2.new(0.9, 0, 0.9, 0) or UDim2.new(0.9, 0, 0, 35)
+end)
