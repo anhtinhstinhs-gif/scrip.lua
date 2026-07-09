@@ -1,4 +1,3 @@
--- MÃ NGUỒN PHIÊN BẢN V21.5 - ĐÃ LOẠI BỎ HOÀN TOÀN WALL HOP (FIX LỖI KHÔNG HIỆN MENU)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,14 +6,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Thu gọn chiều cao tối đa còn 210 vì đã bỏ Wall Hop)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuMobileFPS_V21"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- NÚT NỔI O
 local OpenButton = Instance.new("TextButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 45, 0, 45)
@@ -33,7 +30,7 @@ OpenCorner.Parent = OpenButton
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 210) -- Chiều cao tối ưu hóa còn 210 gọn gàng
+MainFrame.Size = UDim2.new(0, 430, 0, 210)
 MainFrame.Position = UDim2.new(0.5, -215, 0.5, -105)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
@@ -77,7 +74,6 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- KHỞI TẠO BIẾN TRẠNG THÁI
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
@@ -90,8 +86,6 @@ local AimDistance = 150
 
 if setfpscap then setfpscap(999) end
 
--- =====================================================================
--- 2. HÀM TẠO BOX ESP 3D TƯƠNG THÍCH CẢ R6 VÀ R15
 local function apply3DESP(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
@@ -128,8 +122,6 @@ Players.PlayerAdded:Connect(function(plr)
     end)
 end)
 
--- =====================================================================
--- 3. HÀM TÌM KIẾM MỤC TIÊU GẦN NHẤT CHO AIMBOT
 local function getClosestPlayer()
     local closestTarget = nil
     local maxDist = AimDistance
@@ -148,8 +140,6 @@ local function getClosestPlayer()
     return closestTarget
 end
 
--- =====================================================================
--- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ CHỈ SỐ NHÂN VẬT & TÍNH NĂNG CHÍNH)
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
@@ -220,8 +210,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- =====================================================================
--- 5. HÀM TỐI ƯU HÓA FPS ĐỒ HỌA
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
     if OptimizeLevel >= 1 then
@@ -256,8 +244,6 @@ local function boostFPSSystem()
     RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- =====================================================================
--- 6. HÀM TẠO THANH KÉO SLIDER VÀ NÚT BẤM (HỖ TRỢ DI CHUYỂN MENU MOBILE)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -315,10 +301,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     if humanoid then humanoid.UseJumpPower = true; humanoid.WalkSpeed = currentSpeed; humanoid.JumpPower = currentJump end
 end)
 
--- =====================================================================
--- 7. THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
-
--- --- CỘT TRÁI (CHỈ CÒN SLIDERS TỐC ĐỘ, NHẢY, PHẠM VI) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
@@ -333,7 +315,6 @@ createSlider(LeftColumn, "Bán kính AOE Quét", 100, 10, 500, 150, function(val
     AimDistance = val
 end)
 
--- --- CỘT PHẢI (CÁC TÍNH NĂNG CHÍNH ĐỒ HỌA VÀ CHIẾN ĐẤU) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
@@ -367,7 +348,6 @@ createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 
     RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
 end)
 
--- 8. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
