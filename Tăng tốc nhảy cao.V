@@ -1,4 +1,4 @@
--- MÃ NGUỒN PHIÊN BẢN V21.4 - TỐI ƯU HÓA 1 NÚT WALL HOP DUY NHẤT (FIX LỖI MENU)
+-- MÃ NGUỒN PHIÊN BẢN V21.5 - ĐÃ LOẠI BỎ HOÀN TOÀN WALL HOP (FIX LỖI KHÔNG HIỆN MENU)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Thu gọn chiều cao về 245 để menu gọn gàng, đẹp mắt)
+-- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT (Thu gọn chiều cao tối đa còn 210 vì đã bỏ Wall Hop)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuMobileFPS_V21"
 ScreenGui.ResetOnSpawn = false
@@ -33,8 +33,8 @@ OpenCorner.Parent = OpenButton
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 245) -- Thu gọn chiều cao xuống 245
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
+MainFrame.Size = UDim2.new(0, 430, 0, 210) -- Chiều cao tối ưu hóa còn 210 gọn gàng
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -105)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "AOE Kill & 3D ESP Menu V21.4"
+Title.Text = "AOE Kill & 3D ESP Menu V21.5"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -82,10 +82,6 @@ local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
 local AimActive = false
-
--- Chỉ sử dụng 1 biến trạng thái duy nhất cho tính năng Wall Hop toàn năng
-local WallHopActive = false
-local LastWallTime = 0
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -133,45 +129,6 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 -- =====================================================================
--- TỐI ƯU HÓA LOGIC WALL HOP AN TOÀN (GỘP THÀNH 1 HÀM TỰ ĐỘNG CÂN BẰNG TỐC ĐỘ)
-local function executeWallJump()
-    local character = LocalPlayer.Character
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-    
-    if humanoid and hrp then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 50, hrp.AssemblyLinearVelocity.Z)
-    end
-end
-
-RunService.Heartbeat:Connect(function()
-    if not WallHopActive then return end
-    
-    local character = LocalPlayer.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    if not hrp or not humanoid then return end
-    
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {character}
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    
-    local raycastResult = workspace:Raycast(hrp.Position, Camera.CFrame.LookVector * 3.5, raycastParams)
-    
-    if raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide then
-        -- Tự động nhận diện hành vi di chuyển: Nếu đứng yên/leo thẳng đứng thì dùng delay 0.25s, nếu đang di chuyển ngang thì dùng delay 0.05s
-        local isMovingFast = hrp.AssemblyLinearVelocity.Magnitude > currentSpeed * 0.8
-        local dynamicCooldown = isMovingFast and 0.05 or 0.25
-        
-        if (os.clock() - LastWallTime) > dynamicCooldown then
-            LastWallTime = os.clock()
-            executeWallJump()
-        end
-    end
-end)
-
--- =====================================================================
 -- 3. HÀM TÌM KIẾM MỤC TIÊU GẦN NHẤT CHO AIMBOT
 local function getClosestPlayer()
     local closestTarget = nil
@@ -192,7 +149,7 @@ local function getClosestPlayer()
 end
 
 -- =====================================================================
--- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ CHỈ SỐ NHÂN VẬT & TÍNH NĂNG)
+-- 4. VÒNG LẶP CHÍNH (RENDERSTEPPED XỬ LÝ CHỈ SỐ NHÂN VẬT & TÍNH NĂNG CHÍNH)
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
@@ -300,7 +257,7 @@ local function boostFPSSystem()
 end
 
 -- =====================================================================
--- 6. HÀM TẠO THANH KÉO SLIDER VÀ NÚT BẤM
+-- 6. HÀM TẠO THANH KÉO SLIDER VÀ NÚT BẤM (HỖ TRỢ DI CHUYỂN MENU MOBILE)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -361,28 +318,22 @@ end)
 -- =====================================================================
 -- 7. THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
 
--- --- CỘT TRÁI (SLIDERS CHỈ SỐ VÀ NÚT TÍNH NĂNG WALL HOP TOÀN NĂNG) ---
+-- --- CỘT TRÁI (CHỈ CÒN SLIDERS TỐC ĐỘ, NHẢY, PHẠM VI) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
-createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
+createSlider(LeftColumn, "Độ cao nhảy", 50, 50, 300, 50, function(val)
     currentJump = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val)
+createSlider(LeftColumn, "Bán kính AOE Quét", 100, 10, 500, 150, function(val)
     AimDistance = val
 end)
 
--- Tạo 1 nút Wall Hop duy nhất, không bị xung đột hàm gây crash menu
-local WallHopBtn = createButton(LeftColumn, "WallHopBtn", "Wall Hop (Ngang/Dọc): OFF", 140, function()
-    WallHopActive = not WallHopActive
-    LeftColumn.WallHopBtn.Text = WallHopActive and "Wall Hop (Ngang/Dọc): ON" or "Wall Hop (Ngang/Dọc): OFF"
-end)
-
--- --- CỘT PHẢI (BUTTONS TÍNH NĂNG CHÍNH VẪN GIỮ NGUYÊN) ---
+-- --- CỘT PHẢI (CÁC TÍNH NĂNG CHÍNH ĐỒ HỌA VÀ CHIẾN ĐẤU) ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
