@@ -1,53 +1,84 @@
+local Player = game:GetService("Players").LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
--- Tạo Frame và Button
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 150, 0, 40)
-frame.Position = UDim2.new(0.5, -75, 0.5, -20) -- Trung tâm màn hình
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-frame.Parent = game:GetService("CoreGui")
+-- Tạo ScreenGui
+local Menu = Instance.new("ScreenGui")
+Menu.Name = "SpeedMenu"
+Menu.ResetOnSpawn = true
+Menu.Parent = Player:WaitForChild("PlayerGui")
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1, -10, 1, -10)
-button.Position = UDim2.new(0, 5, 0, 5)
-button.Text = "Tăng Tốc Độ 2x"
-button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-button.Font = Enum.Font.GothamBold
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
-button.Parent = frame
+-- Tạo Frame chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 150, 0, 50)
+MainFrame.Position = UDim2.new(0, 20, 0, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 255)
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = Menu
 
+-- Tạo nút bấm
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(1, 0, 1, 0)
+ToggleButton.Text = "TỐC ĐỘ X2"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Parent = MainFrame
+
+-- Biến lưu trạng thái
 local isSpeedActive = false
+local isResized = false -- Đánh dấu menu đã được to
 
--- Hàm thay đổi tốc độ
+-- Hàm bật/tắt tốc độ
 local function toggleSpeed()
     isSpeedActive = not isSpeedActive
-    if isSpeedActive then
-        button.Text = "Tắt Tốc Độ 2x"
-        button.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-        -- Thiết lập tốc độ 2x (16 -> 32)
-        LocalPlayer.Character.Humanoid.WalkSpeed = 32
-    else
-        button.Text = "Tăng Tốc Độ 2x"
-        button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        -- Khôi phục tốc độ mặc định (16)
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16
-    end
+    Humanoid.WalkSpeed = isSpeedActive and 32 or 16 -- 16*2 = 32
+    Humanoid.JumpPower = isSpeedActive and 64 or 50 -- Tùy chỉnh nhảy
+    ToggleButton.Text = isSpeedActive and "TỐC ĐỘ X2 (Tắt)" or "TỐC ĐỘ X2"
+    ToggleButton.BackgroundColor3 = isSpeedActive and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(50, 50, 50)
 end
 
--- Kết nối sự kiện click nút
-button.MouseButton1Click:Connect(toggleSpeed)
+ToggleButton.MouseButton1Click:Connect(toggleSpeed)
 
--- Đảm bảo cập nhật tốc độ nếu nhân vật thay đổi
-LocalPlayer.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    humanoid.WalkSpeed = isSpeedActive and 32 or 16
-    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if not isSpeedActive then
-            humanoid.WalkSpeed = 16
-        end
-    end)
+-- Tạo nút to/chuẩn
+local ResizeButton = Instance.new("TextButton")
+ResizeButton.Size = UDim2.new(0, 20, 0, 20)
+ResizeButton.Position = UDim2.new(1, -20, 0, 0)
+ResizeButton.Text = "O"
+ResizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ResizeButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+ResizeButton.Font = Enum.Font.SourceSansBold
+ResizeButton.Parent = MainFrame
+
+ResizeButton.MouseButton1Click:Connect(function()
+    isResized = not isResized
+    MainFrame.Size = isResized and UDim2.new(0, 300, 0, 50) or UDim2.new(0, 150, 0, 50)
+    ResizeButton.Text = isResized and "O" or "O"
+end)
+
+-- Cho phép kéo thả menu
+local dragging = false
+local dragStart
+local startPos
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+MainFrame.InputEnded:Connect(function()
+    dragging = false
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 end)
