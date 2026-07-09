@@ -1,0 +1,155 @@
+-- ESP 3D Box cho R6 và R15 - Roblox
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local ESP_SETTINGS = {
+    Box = true,
+    Name = true,
+    Health = true,
+    BoxColor = Color3.fromRGB(0, 255, 0),
+    Tracer = false
+}
+
+local ESPObjects = {}
+
+-- Hàm tạo ESP cho 1 player
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+
+    local drawings = {}
+
+    -- Box 3D dùng 4 line
+    if ESP_SETTINGS.Box then
+        for i = 1, 4 do
+            local line = Drawing.new("Line")
+            line.Visible = false
+            line.Color = ESP_SETTINGS.BoxColor
+            line.Thickness = 2
+            drawings["Line"..i] = line
+        end
+    end
+
+    -- Tên
+    if ESP_SETTINGS.Name then
+        local nameText = Drawing.new("Text")
+        nameText.Visible = false
+        nameText.Size = 14
+        nameText.Center = true
+        nameText.Color = Color3.new(1,1,1)
+        nameText.Outline = true
+        drawings.Name = nameText
+    end
+
+    -- Máu
+    if ESP_SETTINGS.Health then
+        local healthText = Drawing.new("Text")
+        healthText.Visible = false
+        healthText.Size = 14
+        healthText.Center = true
+        healthText.Color = Color3.new(0,1,0)
+        healthText.Outline = true
+        drawings.Health = healthText
+    end
+
+    ESPObjects[player] = drawings
+end
+
+-- Xóa ESP khi player out
+local function RemoveESP(player)
+    if ESPObjects[player] then
+        for _, drawing in pairs(ESPObjects[player]) do
+            drawing:Remove()
+        end
+        ESPObjects[player] = nil
+    end
+end
+
+-- Lấy 8 điểm của Hitbox R6 và R15
+local function GetBoundingBox(char)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+
+    local size = humanoid.RigType == Enum.HumanoidRigType.R6 and Vector3.new(3,5,2) or Vector3.new(3,5.5,2)
+    local cf = hrp.CFrame
+
+    local halfSize = size / 2
+    local points = {
+        cf * CFrame.new(-halfSize.X, halfSize.Y, -halfSize.Z),
+        cf * CFrame.new(halfSize.X, halfSize.Y, -halfSize.Z),
+        cf * CFrame.new(halfSize.X, halfSize.Y, halfSize.Z),
+        cf * CFrame.new(-halfSize.X, halfSize.Y, halfSize.Z),
+        cf * CFrame.new(-halfSize.X, -halfSize.Y, -halfSize.Z),
+        cf * CFrame.new(halfSize.X, -halfSize.Y, -halfSize.Z),
+        cf * CFrame.new(halfSize.X, -halfSize.Y, halfSize.Z),
+        cf * CFrame.new(-halfSize.X, -halfSize.Y, halfSize.Z),
+    }
+    return points, hrp.Position
+end
+
+-- Update ESP mỗi frame
+RunService.RenderStepped:Connect(function()
+    for player, drawings in pairs(ESPObjects) do
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid").Health > 0 then
+
+            local points, pos = GetBoundingBox(char)
+            if points then
+                local topPos, topVisible = Camera:WorldToViewportPoint(points[1].Position)
+                local bottomPos, bottomVisible = Camera:WorldToViewportPoint(points[5].Position)
+
+                if topVisible then
+                    local size = (topPos - bottomPos).Y
+                    local width = size / 2
+
+                    -- Vẽ box 3D
+                    if drawings.Line1 then
+                        local corners = {}
+                        for i, p in ipairs(points) do
+                            corners[i] = Camera:WorldToViewportPoint(p.Position)
+                        end
+
+                        drawings.Line1.From = Vector2.new(corners[1].X, corners[1].Y)
+                        drawings.Line1.To = Vector2.new(corners[2].X, corners[2].Y)
+                        drawings.Line2.From = Vector2.new(corners[2].X, corners[2].Y)
+                        drawings.Line2.To = Vector2.new(corners[3].X, corners[3].Y)
+                        drawings.Line3.From = Vector2.new(corners[3].X, corners[3].Y)
+                        drawings.Line3.To = Vector2.new(corners[4].X, corners[4].Y)
+                        drawings.Line4.From = Vector2.new(corners[4].X, corners[4].Y)
+                        drawings.Line4.To = Vector2.new(corners[1].X, corners[1].Y)
+
+                        for i=1,4 do drawings["Line"..i].Visible = true end
+                    end
+
+                    -- Tên
+                    if drawings.Name then
+                        drawings.Name.Position = Vector2.new(topPos.X, topPos.Y - 20)
+                        drawings.Name.Text = player.Name
+                        drawings.Name.Visible = true
+                    end
+
+                    -- Máu
+                    if drawings.Health then
+                        local hum = char:FindFirstChildOfClass("Humanoid")
+                        drawings.Health.Position = Vector2.new(topPos.X, topPos.Y - 35)
+                        drawings.Health.Text = math.floor(hum.Health).."/"..math.floor(hum.MaxHealth)
+                        drawings.Health.Visible = true
+                    end
+                else
+                    for _, d in pairs(drawings) do d.Visible = false end
+                end
+            end
+        else
+            for _, d in pairs(drawings) do d.Visible = false end
+        end
+    end
+end)
+
+-- Tự động add ESP cho player mới
+for _, player in ipairs(Players:GetPlayers()) do
+    CreateESP(player)
+end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
