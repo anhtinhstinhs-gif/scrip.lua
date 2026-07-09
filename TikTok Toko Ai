@@ -1,0 +1,53 @@
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Tạo Frame và Button
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 150, 0, 40)
+frame.Position = UDim2.new(0.5, -75, 0.5, -20) -- Trung tâm màn hình
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 2
+frame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+frame.Parent = game:GetService("CoreGui")
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -10, 1, -10)
+button.Position = UDim2.new(0, 5, 0, 5)
+button.Text = "Tăng Tốc Độ 2x"
+button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+button.Font = Enum.Font.GothamBold
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Parent = frame
+
+local isSpeedActive = false
+
+-- Hàm thay đổi tốc độ
+local function toggleSpeed()
+    isSpeedActive = not isSpeedActive
+    if isSpeedActive then
+        button.Text = "Tắt Tốc Độ 2x"
+        button.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        -- Thiết lập tốc độ 2x (16 -> 32)
+        LocalPlayer.Character.Humanoid.WalkSpeed = 32
+    else
+        button.Text = "Tăng Tốc Độ 2x"
+        button.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        -- Khôi phục tốc độ mặc định (16)
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16
+    end
+end
+
+-- Kết nối sự kiện click nút
+button.MouseButton1Click:Connect(toggleSpeed)
+
+-- Đảm bảo cập nhật tốc độ nếu nhân vật thay đổi
+LocalPlayer.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = isSpeedActive and 32 or 16
+    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if not isSpeedActive then
+            humanoid.WalkSpeed = 16
+        end
+    end)
+end)
