@@ -1,4 +1,4 @@
--- ESP BOX 3D PRO V4.1 - FIX LỖI CRASH
+-- ESP BOX 3D PRO V4.3 - FIX LỖI THU GỌN
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -38,7 +38,7 @@ Title.Parent = Frame
 Title.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "ESP MENU [O] - Gọn nhẹ 😘"
+Title.Text = "ESP MENU [O] - V4.3 Fixed 😘"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.TextSize = 14
 
@@ -84,12 +84,11 @@ for i, v in ipairs(Toggles) do
     end)
 end
 
--- KÉO THẢ - ĐÃ SỬA LỖI
+-- KÉO THẢ
 local function update(input)
     local delta = input.Position - DragStart
     Frame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + delta.X, StartPos.Y.Scale, StartPos.Y.Offset + delta.Y)
 end
-
 Frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         Dragging = true
@@ -99,16 +98,14 @@ Frame.InputBegan:Connect(function(input)
             if input.UserInputState == Enum.UserInputState.End then
                 Dragging = false
             end
-        end)  -- ✅ Đã sửa
+        end)
     end
 end)
-
 Frame.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement then
         DragInput = input
     end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
     if input == DragInput and Dragging then
         update(input)
@@ -121,65 +118,45 @@ local function SetMenuState(state)
     if state == "Big" then
         Frame.Size = UDim2.new(0, 300, 0, 150)
         Content.Visible = true
-        Title.Text = "ESP MENU [O] - Gọn nhẹ 😘"
+        Frame.Visible = true -- ✅ Quan trọng: phải bật visible
+        Title.Text = "ESP MENU [O] - V4.3 Fixed 😘"
     elseif state == "Small" then
         Frame.Size = UDim2.new(0, 180, 0, 30)
         Content.Visible = false
+        Frame.Visible = true
         Title.Text = "ESP [O]"
-    elseif state == "Hidden" then
-        Frame.Visible = false
     end
 end
 
 BtnBig.MouseButton1Click:Connect(function() SetMenuState("Big") end)
 BtnSmall.MouseButton1Click:Connect(function() SetMenuState("Small") end)
 
+-- ✅ ĐÃ SỬA: Bấm O để Toggle Big <-> Small
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Enum.KeyCode.O then
-        if not Frame.Visible then
-            SetMenuState("Big")
-            Frame.Visible = true
-        elseif Settings.MenuState == "Big" then
+        if Settings.MenuState == "Big" then
             SetMenuState("Small")
-        elseif Settings.MenuState == "Small" then
-            SetMenuState("Hidden")
+        else
+            SetMenuState("Big")
         end
     end
 end)
 
 -- PHẦN ESP DRAWING
-local function NewLine()
-    local l = Drawing.new("Line")
-    l.Visible = false
-    l.Thickness = 1.8
-    return l
-end
-
-local function NewText()
-    local t = Drawing.new("Text")
-    t.Visible = false
-    t.Size = 14
-    t.Center = true
-    t.Outline = true
-    t.Font = 2
-    return t
-end
+local function NewLine() local l = Drawing.new("Line") l.Visible = false l.Thickness = 1.8 l.Transparency = 1 return l end
+local function NewText() local t = Drawing.new("Text") t.Visible = false t.Size = 14 t.Center = true t.Outline = true t.Font = 2 return t end
 
 local function CreateESP(player)
-    if player == LocalPlayer then return end
+    if player == LocalPlayer or Objects[player] then return end
     local cache = {Lines = {}, Dist = NewText()}
-    for i = 1, 12 do
-        cache.Lines[i] = NewLine()
-    end
+    for i = 1, 12 do cache.Lines[i] = NewLine() end
     Objects[player] = cache
 end
 
 local function RemoveESP(player)
     if Objects[player] then
-        for _, v in pairs(Objects[player].Lines) do
-            v:Remove()
-        end
-        Objects[player].Dist:Remove()
+        for _, v in pairs(Objects[player].Lines) do pcall(function() v:Remove() end) end
+        pcall(function() Objects[player].Dist:Remove() end)
         Objects[player] = nil
     end
 end
@@ -187,31 +164,24 @@ end
 local function GetBoxPoints(char)
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
+    if not hrp or not hum or hum.Health <= 0 then return end
     local size = hum.RigType == Enum.HumanoidRigType.R6 and Vector3.new(2.8, 5, 2) or Vector3.new(3, 5.5, 2.2)
     local cf = hrp.CFrame
     local s = size / 2
     return {
-        cf * CFrame.new(-s.X, s.Y, -s.Z),
-        cf * CFrame.new( s.X, s.Y, -s.Z),
-        cf * CFrame.new( s.X, s.Y,  s.Z),
-        cf * CFrame.new(-s.X, s.Y,  s.Z),
-        cf * CFrame.new(-s.X, -s.Y, -s.Z),
-        cf * CFrame.new( s.X, -s.Y, -s.Z),
-        cf * CFrame.new( s.X, -s.Y,  s.Z),
-        cf * CFrame.new(-s.X, -s.Y,  s.Z),
+        cf * CFrame.new(-s.X, s.Y, -s.Z), cf * CFrame.new( s.X, s.Y, -s.Z),
+        cf * CFrame.new( s.X, s.Y, s.Z), cf * CFrame.new(-s.X, s.Y, s.Z),
+        cf * CFrame.new(-s.X, -s.Y, -s.Z), cf * CFrame.new( s.X, -s.Y, -s.Z),
+        cf * CFrame.new( s.X, -s.Y, s.Z), cf * CFrame.new(-s.X, -s.Y, s.Z),
     }, hrp.Position
 end
 
 local connections = {{1,2},{2,3},{3,4},{4,1},{5,6},{6,7},{7,8},{8,5},{1,5},{2,6},{3,7},{4,8}}
 
--- ✅ ĐÃ SỬA: Ẩn toàn bộ ESP khi tắt Enabled
 RunService.RenderStepped:Connect(function()
     if not Settings.Enabled then
         for _, cache in pairs(Objects) do
-            for _, l in pairs(cache.Lines) do
-                l.Visible = false
-            end
+            for _, l in pairs(cache.Lines) do l.Visible = false end
             cache.Dist.Visible = false
         end
         return
@@ -220,11 +190,10 @@ RunService.RenderStepped:Connect(function()
     for player, cache in pairs(Objects) do
         local char = player.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
+
         if char and hum and hum.Health > 0 then
             if Settings.TeamCheck and player.Team == LocalPlayer.Team then
-                for _, l in pairs(cache.Lines) do
-                    l.Visible = false
-                end
+                for _, l in pairs(cache.Lines) do l.Visible = false end
                 cache.Dist.Visible = false
             else
                 local points, pos = GetBoxPoints(char)
@@ -235,6 +204,7 @@ RunService.RenderStepped:Connect(function()
                         screenPoints[i] = Vector2.new(v.X, v.Y)
                         if vis then onScreen = true end
                     end
+
                     if onScreen then
                         for i, con in ipairs(connections) do
                             local line = cache.Lines[i]
@@ -243,33 +213,28 @@ RunService.RenderStepped:Connect(function()
                             line.Color = Settings.BoxColor
                             line.Visible = Settings.Box
                         end
+
                         if Settings.Distance then
                             local dist = math.floor((Camera.CFrame.Position - pos).Magnitude)
                             local headPos = Camera:WorldToViewportPoint(points[1].Position + Vector3.new(0, 1, 0))
                             cache.Dist.Position = Vector2.new(headPos.X, headPos.Y - 20)
-                            cache.Dist.Text = dist .. "m"
+                            cache.Dist.Text = dist.. "m"
                             cache.Dist.Color = Color3.new(1, 1, 1)
                             cache.Dist.Visible = true
                         end
                     else
-                        for _, l in pairs(cache.Lines) do
-                            l.Visible = false
-                        end
+                        for _, l in pairs(cache.Lines) do l.Visible = false end
                         cache.Dist.Visible = false
                     end
                 end
             end
         else
-            for _, l in pairs(cache.Lines) do
-                l.Visible = false
-            end
+            for _, l in pairs(cache.Lines) do l.Visible = false end
             cache.Dist.Visible = false
         end
     end
 end)
 
-for _, p in ipairs(Players:GetPlayers()) do
-    CreateESP(p)
-end
+for _, p in ipairs(Players:GetPlayers()) do CreateESP(p) end
 Players.PlayerAdded:Connect(CreateESP)
 Players.PlayerRemoving:Connect(RemoveESP)
