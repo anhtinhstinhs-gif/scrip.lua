@@ -1,0 +1,165 @@
+-- ================== SPEED MENU X2 ==================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+-- Tốc độ gốc
+local NORMAL_SPEED = 16
+local BOOST_SPEED = 32
+local NORMAL_JUMP = 50
+local BOOST_JUMP = 64
+
+local speedOn = false
+local minimized = false
+
+-- ===== Tạo GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SpeedMenu"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 220, 0, 90)
+frame.Position = UDim2.new(0, 20, 0, 20)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Thanh tiêu đề (vùng để kéo)
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 28)
+titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+titleBar.BorderSizePixel = 0
+titleBar.Active = true
+titleBar.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -35, 1, 0)
+titleLabel.Position = UDim2.new(0, 8, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "SPEED MENU"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 14
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+-- Nút thu nhỏ / phóng to "O"
+local toggleSizeBtn = Instance.new("TextButton")
+toggleSizeBtn.Name = "ToggleSizeButton"
+toggleSizeBtn.Size = UDim2.new(0, 24, 0, 24)
+toggleSizeBtn.Position = UDim2.new(1, -28, 0, 2)
+toggleSizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+toggleSizeBtn.Text = "O"
+toggleSizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleSizeBtn.Font = Enum.Font.GothamBold
+toggleSizeBtn.TextSize = 14
+toggleSizeBtn.Parent = titleBar
+
+local toggleSizeCorner = Instance.new("UICorner")
+toggleSizeCorner.CornerRadius = UDim.new(0, 6)
+toggleSizeCorner.Parent = toggleSizeBtn
+
+-- Nút bật/tắt tốc độ x2
+local speedBtn = Instance.new("TextButton")
+speedBtn.Name = "SpeedButton"
+speedBtn.Size = UDim2.new(1, -20, 0, 40)
+speedBtn.Position = UDim2.new(0, 10, 0, 40)
+speedBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
+speedBtn.Text = "TỐC ĐỘ X2: TẮT"
+speedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBtn.Font = Enum.Font.GothamBold
+speedBtn.TextSize = 16
+speedBtn.Parent = frame
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 6)
+speedCorner.Parent = speedBtn
+
+-- ===== Hàm áp dụng tốc độ =====
+local function applySpeed()
+	local character = player.Character
+	if not character then return end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	if speedOn then
+		humanoid.WalkSpeed = BOOST_SPEED
+		humanoid.JumpPower = BOOST_JUMP
+	else
+		humanoid.WalkSpeed = NORMAL_SPEED
+		humanoid.JumpPower = NORMAL_JUMP
+	end
+end
+
+-- Áp dụng lại mỗi khi hồi sinh
+player.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	applySpeed()
+end)
+
+-- ===== Nút bật/tắt tốc độ =====
+speedBtn.MouseButton1Click:Connect(function()
+	speedOn = not speedOn
+	if speedOn then
+		speedBtn.Text = "TỐC ĐỘ X2: BẬT"
+		speedBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+	else
+		speedBtn.Text = "TỐC ĐỘ X2: TẮT"
+		speedBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
+	end
+	applySpeed()
+end)
+
+-- ===== Nút thu nhỏ / phóng to =====
+toggleSizeBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		frame:TweenSize(UDim2.new(0, 220, 0, 28), Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2, true)
+		speedBtn.Visible = false
+	else
+		speedBtn.Visible = true
+		frame:TweenSize(UDim2.new(0, 220, 0, 90), Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2, true)
+	end
+end)
+
+-- ===== Kéo thả menu =====
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y
+		)
+	end
+end)
