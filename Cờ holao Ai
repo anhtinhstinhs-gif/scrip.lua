@@ -1,4 +1,4 @@
--- ================== SPEED MENU X2 ==================
+-- ================== SPEED MENU X2 + CUSTOM ==================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
@@ -12,6 +12,7 @@ local BOOST_JUMP = 64
 
 local speedOn = false
 local minimized = false
+local customSpeed = nil -- nil = không dùng tốc độ tùy chỉnh
 
 -- ===== Tạo GUI =====
 local screenGui = Instance.new("ScreenGui")
@@ -21,7 +22,7 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
 frame.Name = "MainFrame"
-frame.Size = UDim2.new(0, 220, 0, 90)
+frame.Size = UDim2.new(0, 220, 0, 140)
 frame.Position = UDim2.new(0, 20, 0, 20)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 frame.BorderSizePixel = 0
@@ -72,21 +73,72 @@ local toggleSizeCorner = Instance.new("UICorner")
 toggleSizeCorner.CornerRadius = UDim.new(0, 6)
 toggleSizeCorner.Parent = toggleSizeBtn
 
+-- Container cho các nội dung có thể ẩn/hiện khi thu nhỏ
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, 0, 1, -28)
+content.Position = UDim2.new(0, 0, 0, 28)
+content.BackgroundTransparency = 1
+content.Parent = frame
+
 -- Nút bật/tắt tốc độ x2
 local speedBtn = Instance.new("TextButton")
 speedBtn.Name = "SpeedButton"
-speedBtn.Size = UDim2.new(1, -20, 0, 40)
-speedBtn.Position = UDim2.new(0, 10, 0, 40)
+speedBtn.Size = UDim2.new(1, -20, 0, 36)
+speedBtn.Position = UDim2.new(0, 10, 0, 8)
 speedBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
 speedBtn.Text = "TỐC ĐỘ X2: TẮT"
 speedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 speedBtn.Font = Enum.Font.GothamBold
 speedBtn.TextSize = 16
-speedBtn.Parent = frame
+speedBtn.Parent = content
 
 local speedCorner = Instance.new("UICorner")
 speedCorner.CornerRadius = UDim.new(0, 6)
 speedCorner.Parent = speedBtn
+
+-- Ô nhập tốc độ tùy chỉnh (chỉ số)
+local speedBox = Instance.new("TextBox")
+speedBox.Name = "SpeedInputBox"
+speedBox.Size = UDim2.new(1, -20, 0, 32)
+speedBox.Position = UDim2.new(0, 10, 0, 52)
+speedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 58)
+speedBox.Text = ""
+speedBox.PlaceholderText = "Nhập tốc độ tùy chỉnh..."
+speedBox.PlaceholderColor3 = Color3.fromRGB(160, 160, 165)
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBox.Font = Enum.Font.Gotham
+speedBox.TextSize = 14
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = content
+
+local speedBoxCorner = Instance.new("UICorner")
+speedBoxCorner.CornerRadius = UDim.new(0, 6)
+speedBoxCorner.Parent = speedBox
+
+-- Nút áp dụng tốc độ tùy chỉnh
+local applyBtn = Instance.new("TextButton")
+applyBtn.Name = "ApplyButton"
+applyBtn.Size = UDim2.new(1, -20, 0, 32)
+applyBtn.Position = UDim2.new(0, 10, 0, 90)
+applyBtn.BackgroundColor3 = Color3.fromRGB(70, 130, 200)
+applyBtn.Text = "ÁP DỤNG TỐC ĐỘ TÙY CHỈNH"
+applyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+applyBtn.Font = Enum.Font.GothamBold
+applyBtn.TextSize = 13
+applyBtn.Parent = content
+
+local applyCorner = Instance.new("UICorner")
+applyCorner.CornerRadius = UDim.new(0, 6)
+applyCorner.Parent = applyBtn
+
+-- Chỉ cho phép nhập số trong TextBox
+speedBox:GetPropertyChangedSignal("Text"):Connect(function()
+	local filtered = speedBox.Text:gsub("[^%d]", "") -- chỉ giữ lại chữ số
+	if filtered ~= speedBox.Text then
+		speedBox.Text = filtered
+	end
+end)
 
 -- ===== Hàm áp dụng tốc độ =====
 local function applySpeed()
@@ -95,7 +147,10 @@ local function applySpeed()
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	if speedOn then
+	if customSpeed then
+		humanoid.WalkSpeed = customSpeed
+		humanoid.JumpPower = NORMAL_JUMP
+	elseif speedOn then
 		humanoid.WalkSpeed = BOOST_SPEED
 		humanoid.JumpPower = BOOST_JUMP
 	else
@@ -110,8 +165,9 @@ player.CharacterAdded:Connect(function()
 	applySpeed()
 end)
 
--- ===== Nút bật/tắt tốc độ =====
+-- ===== Nút bật/tắt tốc độ x2 =====
 speedBtn.MouseButton1Click:Connect(function()
+	customSpeed = nil -- hủy tốc độ tùy chỉnh khi dùng x2
 	speedOn = not speedOn
 	if speedOn then
 		speedBtn.Text = "TỐC ĐỘ X2: BẬT"
@@ -123,15 +179,34 @@ speedBtn.MouseButton1Click:Connect(function()
 	applySpeed()
 end)
 
+-- ===== Nút áp dụng tốc độ tùy chỉnh =====
+applyBtn.MouseButton1Click:Connect(function()
+	local num = tonumber(speedBox.Text)
+	if num and num > 0 then
+		customSpeed = num
+		speedOn = false
+		speedBtn.Text = "TỐC ĐỘ X2: TẮT"
+		speedBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
+		applySpeed()
+		applyBtn.Text = "ĐÃ ÁP DỤNG: " .. num
+		task.wait(1)
+		applyBtn.Text = "ÁP DỤNG TỐC ĐỘ TÙY CHỈNH"
+	else
+		applyBtn.Text = "VUI LÒNG NHẬP SỐ HỢP LỆ"
+		task.wait(1)
+		applyBtn.Text = "ÁP DỤNG TỐC ĐỘ TÙY CHỈNH"
+	end
+end)
+
 -- ===== Nút thu nhỏ / phóng to =====
 toggleSizeBtn.MouseButton1Click:Connect(function()
 	minimized = not minimized
 	if minimized then
 		frame:TweenSize(UDim2.new(0, 220, 0, 28), Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2, true)
-		speedBtn.Visible = false
+		content.Visible = false
 	else
-		speedBtn.Visible = true
-		frame:TweenSize(UDim2.new(0, 220, 0, 90), Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2, true)
+		content.Visible = true
+		frame:TweenSize(UDim2.new(0, 220, 0, 140), Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2, true)
 	end
 end)
 
