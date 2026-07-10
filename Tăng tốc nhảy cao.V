@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU CHỮ NHẬT GỌN NHẸ
+-- 1. KHỞI TẠO GIAO DIỆN MENU
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuMobileFPS_V21"
 ScreenGui.ResetOnSpawn = false
@@ -33,7 +33,7 @@ OpenCorner.Parent = OpenButton
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 245) -- Tăng nhẹ lên 245 để chứa thêm nút Wall Hop vừa vặn
+MainFrame.Size = UDim2.new(0, 430, 0, 245) 
 MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
 MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MainFrame.Active = true
@@ -82,7 +82,7 @@ local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
 local AimActive = false
-local WallHopActive = false -- Trạng thái tắt/bật của WallHop V2
+local WallHopActive = false 
 local InfiniteJumpEnabled = true 
 
 local OptimizeLevel = 0 
@@ -401,7 +401,7 @@ local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
     Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 26); Btn.Position = UDim2.new(0, 0, 0, yOffset); Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.TextSize = 13; Btn.Font = Enum.Font.SourceSansBold; Btn.Parent = parentCol
-    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 5); Parent = Btn; BtnCorner.Parent = Btn
+    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 5); BtnCorner.Parent = Btn
     table.insert(RainbowObjects, Btn)
     Btn.MouseButton1Click:Connect(callback)
     return Btn
@@ -459,4 +459,6 @@ createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, fu
     RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
-createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE K
+createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 140, function()
+    KillAuraActive = not KillAuraActive
+    RightColumn.SwordBtn.Text = KillAuraActive
