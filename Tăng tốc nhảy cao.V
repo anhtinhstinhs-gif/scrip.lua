@@ -7,111 +7,427 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO MENU V22
+-- 1. KHỞI TẠO GIAO DIỆN MENU V23 (GIỮ NGUYÊN GIAO DIỆN CHUẨN)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenu_V22_Stealth"
+ScreenGui.Name = "ModMenuMobileFPS_V23"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- NÚT NỔI O
 local OpenButton = Instance.new("TextButton")
-OpenButton.Size = UDim2.new(0, 45, 0, 45); OpenButton.Position = UDim2.new(0, 15, 0, 70)
-OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255); OpenButton.Text = "O"; OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenButton.Visible = false; OpenButton.Parent = ScreenGui
-Instance.new("UICorner", OpenButton).CornerRadius = UDim.new(1, 0)
+OpenButton.Name = "OpenButton"
+OpenButton.Size = UDim2.new(0, 45, 0, 45)
+OpenButton.Position = UDim2.new(0, 15, 0, 70) 
+OpenButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenButton.Text = "O"
+OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenButton.TextSize = 22
+OpenButton.Font = Enum.Font.SourceSansBold
+OpenButton.Visible = false
+OpenButton.Parent = ScreenGui
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 430, 0, 245); MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25); MainFrame.Active = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenButton
 
--- CÁC BIẾN TÍNH NĂNG
-local SpinActive, HitboxEspActive, KillAuraActive, AimActive, InvisibleActive = false, false, false, false, false
-local currentSpeed = 16; local currentJump = 50; local AimDistance = 150
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 430, 0, 245) 
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0, 250, 0, 35)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Text = "AOE Kill & 3D ESP Menu V23.0"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = MainFrame
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
+MinimizeButton.Position = UDim2.new(1, -40, 0, 0)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "—"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 50, 50)
+MinimizeButton.TextSize = 20
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = MainFrame
+
+local LeftColumn = Instance.new("Frame", MainFrame)
+LeftColumn.Size = UDim2.new(0.5, -15, 1, -45)
+LeftColumn.Position = UDim2.new(0, 10, 0, 40)
+LeftColumn.BackgroundTransparency = 1
+
+local RightColumn = Instance.new("Frame", MainFrame)
+RightColumn.Size = UDim2.new(0.5, -15, 1, -45)
+RightColumn.Position = UDim2.new(0.5, 5, 0, 40)
+RightColumn.BackgroundTransparency = 1
+
+local RainbowObjects = { OpenButton }
+local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
+
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (BẢO LƯU 100%)
+local SpinActive = false
+local HitboxEspActive = false   
+local KillAuraActive = false     
+local AimActive = false
+local InvisibleActive = false -- Trạng thái tàng hình
+
+local OptimizeLevel = 0 
+local currentSpeed = 16
+local currentJump = 50
+local AimDistance = 150
+
+if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- TÍNH NĂNG TÀNG HÌNH & SELF-ESP
-local SelfHighlight = Instance.new("Highlight")
-SelfHighlight.Name = "SelfHighlight"
-SelfHighlight.FillColor = Color3.fromRGB(0, 255, 255)
-SelfHighlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-SelfHighlight.FillTransparency = 0.5
-SelfHighlight.OutlineTransparency = 0
-SelfHighlight.Enabled = false
+-- CƠ CHẾ TÀNG HÌNH & TỰ TẠO HITBOX XANH CHO BẢN THÂN
+local MyHitboxBoxes = {}
 
-local function setVisibility(visible)
+local function setMyVisibility(invisible)
     local char = LocalPlayer.Character
     if not char then return end
+    
+    -- 1. Ẩn/Hiện cơ thể đối với người khác
     for _, v in pairs(char:GetDescendants()) do
         if v:IsA("BasePart") or v:IsA("Decal") then
-            v.Transparency = visible and 0 or 1
+            v.Transparency = invisible and 1 or 0
         end
     end
-    -- Cập nhật highlight cho chính mình
-    if visible then
-        SelfHighlight.Parent = nil
-        SelfHighlight.Enabled = false
-    else
-        SelfHighlight.Parent = char
-        SelfHighlight.Enabled = true
+    
+    -- 2. Xóa khung hitbox cũ của bản thân nếu có
+    for _, box in ipairs(MyHitboxBoxes) do
+        if box then box:Destroy() end
     end
-end
-
--- =====================================================================
--- HÀM ESP & AIM (GIỮ NGUYÊN)
-local function apply3DESP(character)
-    for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            local oldEsp = v:FindFirstChild("3DESP_Box")
-            if oldEsp then oldEsp:Destroy() end
-            if HitboxEspActive then
-                local box = Instance.new("BoxHandleAdornment", v)
-                box.Name = "3DESP_Box"; box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04)
-                box.AlwaysOnTop = true; box.ZIndex = 5; box.Color3 = Color3.fromRGB(255, 255, 255); box.Transparency = 0.4; box.Adornee = v
+    MyHitboxBoxes = {}
+    
+    -- 3. Nếu đang BẬT tàng hình, tạo khung hộp xanh lá bao quanh chính mình (Chỉ mình thấy)
+    if invisible then
+        for _, v in ipairs(char:GetChildren()) do
+            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                local box = Instance.new("SelectionBox")
+                box.Name = "Self_Hitbox_ESP"
+                box.Color3 = Color3.fromRGB(0, 255, 0) -- Màu xanh lá cây giống ảnh của bạn
+                box.LineThickness = 0.03
+                box.Adornee = v
+                box.AlwaysOnTop = true -- Luôn hiển thị xuyên thấu để bạn nhìn thấy
+                box.Parent = v
+                table.insert(MyHitboxBoxes, box)
             end
         end
     end
 end
 
--- VÒNG LẶP CHÍNH
+-- Tự động áp dụng lại tàng hình và khung tự nhìn nếu nhân vật hồi sinh
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    local humanoid = char:WaitForChild("Humanoid")
+    if humanoid then 
+        humanoid.UseJumpPower = true
+        humanoid.WalkSpeed = currentSpeed
+        humanoid.JumpPower = currentJump 
+    end
+    if InvisibleActive then
+        setMyVisibility(true)
+    end
+end)
+
+-- =====================================================================
+-- HÀM TẠO BOX ESP 3D CHO KẺ ĐỊCH (GIỮ NGUYÊN)
+local function apply3DESP(character)
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            local oldEsp = v:FindFirstChild("3DESP_Box")
+            if oldEsp then oldEsp:Destroy() end
+            
+            if HitboxEspActive then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = "3DESP_Box"
+                box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04)
+                box.AlwaysOnTop = true
+                box.ZIndex = 5
+                box.Color3 = Color3.fromRGB(255, 255, 255)
+                box.Transparency = 0.4
+                box.Adornee = v
+                box.Parent = v
+            end
+        end
+    end
+end
+
+local function updateAllESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then
+            apply3DESP(plr.Character)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if HitboxEspActive then apply3DESP(char) end
+    end)
+end)
+
+-- =====================================================================
+-- HÀM TÌM MỤC TIÊU CHO AIMBOT (GIỮ NGUYÊN)
+local function getClosestPlayer()
+    local closestTarget = nil
+    local maxDist = AimDistance
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local myPos = LocalPlayer.Character.HumanoidRootPart.Position
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                local dist = (plr.Character.HumanoidRootPart.Position - myPos).Magnitude
+                if dist < maxDist then
+                    maxDist = dist
+                    closestTarget = plr.Character.HumanoidRootPart
+                end
+            end
+        end
+    end
+    return closestTarget
+end
+
+-- VÒNG LẶP RENDERSTEPPED CHÍNH (GIỮ NGUYÊN)
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
-        if targetHumanoid.WalkSpeed ~= currentSpeed then targetHumanoid.WalkSpeed = currentSpeed end
-        if targetHumanoid.JumpPower ~= currentJump then targetHumanoid.JumpPower = currentJump end
+        if targetHumanoid.WalkSpeed ~= currentSpeed then
+            targetHumanoid.WalkSpeed = currentSpeed
+        end
+        if targetHumanoid.UseJumpPower then
+            if targetHumanoid.JumpPower ~= currentJump then
+                targetHumanoid.JumpPower = currentJump
+            end
+        else
+            local calculatedHeight = (currentJump * currentJump) / (2 * workspace.Gravity)
+            if math.abs(targetHumanoid.JumpHeight - calculatedHeight) > 1 then
+                targetHumanoid.JumpHeight = calculatedHeight
+            end
+        end
     end
-    -- [KillAura & Aim logic same as before...]
+
+    local target = getClosestPlayer()
+    if AimActive and target then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+    end
+
+    if KillAuraActive and LocalPlayer.Character then
+        local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local myTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("GameRemoteFunction")
+        
+        if myHrp and remote then
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                    local enemyHrp = plr.Character.HumanoidRootPart
+                    local dist = (enemyHrp.Position - myHrp.Position).Magnitude
+                    
+                    if dist <= AimDistance then
+                        local dir = (enemyHrp.Position - myHrp.Position).Unit
+                        remote:InvokeServer(
+                            "AttemptWeaponHit",
+                            {
+                                hitboxOffset = Vector3.new(0, 0, 0),
+                                knockback = 30,
+                                shouldLock = true,
+                                shouldSlow = false,
+                                attackCooldown = 0,
+                                hitboxSize = Vector3.new(100, 100, 100),
+                                lungeKnockback = 35,
+                                slowTime = 0,
+                                slowMult = 1,
+                                cycleIndex = 1,
+                                damage = 100, 
+                                tool = myTool,
+                                shouldLunge = false
+                            },
+                            {{
+                                knockback = 30,
+                                isClosestEnemy = true,
+                                origin = myHrp.Position,
+                                enemyModel = plr.Character,
+                                distance = dist,
+                                direction = dir
+                            }}
+                        )
+                    end
+                end
+            end
+        end
+    end
 end)
 
--- GIAO DIỆN NÚT BẤM (RIGHT COLUMN)
-local RightColumn = Instance.new("Frame", MainFrame); RightColumn.Size = UDim2.new(0.5, -15, 1, -45); RightColumn.Position = UDim2.new(0.5, 5, 0, 40); RightColumn.BackgroundTransparency = 1
+-- TỐI ƯU HÓA ĐỒ HỌA BOOST FPS (GIỮ NGUYÊN)
+local function boostFPSSystem()
+    OptimizeLevel = OptimizeLevel + 1
+    if OptimizeLevel >= 1 then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        for _, v in ipairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = false
+            end
+        end
+    end
+    if OptimizeLevel >= 2 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Texture") or v:IsA("Decal") then
+                v:Destroy()
+            elseif v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic
+                v.Reflectance = 0
+            end
+        end
+    end
+    if OptimizeLevel >= 3 then
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") or v:IsA("Trail") or v:IsA("Beam") then
+                v.Enabled = false
+            elseif v:IsA("Shirt") or v:IsA("Pants") or v:IsA("ShirtGraphic") then
+                v:Destroy()
+            end
+        end
+    end
+    RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
+end
 
-local function createBtn(name, text, y, callback)
-    local Btn = Instance.new("TextButton", RightColumn); Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 26); Btn.Position = UDim2.new(0, 0, 0, y)
-    Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text; Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 5)
+-- DI CHUYỂN MENU TRÊN MOBILE
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
+
+-- CÁC HÀM XÂY DỰNG GIAO DIỆN SLIDER VÀ BUTTON
+local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 0, 18); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
+    Label.TextColor3 = Color3.fromRGB(220, 220, 220); Label.TextSize = 13; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.Parent = parentCol
+
+    local SliderBar = Instance.new("Frame")
+    SliderBar.Size = UDim2.new(1, 0, 0, 8); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 20); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.Parent = parentCol
+
+    local SliderBtn = Instance.new("TextButton")
+    SliderBtn.Size = UDim2.new(0, 16, 0, 16); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.Parent = SliderBar
+    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(1, 0); BtnCorner.Parent = SliderBtn
+    table.insert(RainbowObjects, SliderBtn)
+
+    local sliding = false
+    SliderBtn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = true end end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
+    UserInputService.InputChanged:Connect(function(input)
+        if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local mousePos = input.Position.X; local barStart = SliderBar.AbsolutePosition.X; local barWidth = SliderBar.AbsoluteSize.X
+            local percentage = math.clamp((mousePos - barStart) / barWidth, 0, 1)
+            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 16), 0, -4)
+            local calculatedValue = math.floor(minVal + (percentage * (maxVal - minVal)))
+            Label.Text = text .. ": " .. calculatedValue
+            callback(calculatedValue)
+        end
+    end)
+end
+
+local function createButton(parentCol, name, text, yOffset, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 26); Btn.Position = UDim2.new(0, 0, 0, yOffset); Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.TextSize = 13; Btn.Font = Enum.Font.SourceSansBold; Btn.Parent = parentCol
+    local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 5); BtnCorner.Parent = Btn
+    table.insert(RainbowObjects, Btn)
     Btn.MouseButton1Click:Connect(callback)
     return Btn
 end
 
-createBtn("InvisBtn", "Bật Tàng Hình + Self ESP", 0, function()
-    InvisibleActive = not InvisibleActive
-    setVisibility(not InvisibleActive) -- Tàng hình = false (ẩn đi)
-    RightColumn.InvisBtn.Text = InvisibleActive and "Tàng Hình: ON (Đang ẩn)" or "Bật Tàng Hình + Self ESP"
+-- =====================================================================
+-- 7. THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
+
+-- --- CỘT TRÁI (SLIDERS CHỈ SỐ) ---
+createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
+    currentSpeed = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
-createBtn("EspBtn", "Bật/Tắt ESP", 35, function()
+createSlider(LeftColumn, "Độ cao nhảy", 50, 50, 300, 50, function(val)
+    currentJump = val
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
+end)
+
+createSlider(LeftColumn, "Bán kính AOE Quét", 100, 10, 500, 150, function(val)
+    AimDistance = val
+end)
+
+-- --- CỘT PHẢI (NÚT BẤM TÍNH NĂNG) ---
+local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
+    boostFPSSystem()
+end)
+
+createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
+    SpinActive = not SpinActive
+    local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
+        if oldSpin then oldSpin:Destroy() end
+        if SpinActive then
+            local spin = Instance.new("BodyAngularVelocity", hrp); spin.Name = "SpinGlitchForce"
+            spin.MaxTorque = Vector3.new(0, math.huge, 0); spin.AngularVelocity = Vector3.new(0, 60, 0)
+        end
+    end
+end)
+
+createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Hộp 3D ESP", 70, function()
     HitboxEspActive = not HitboxEspActive
-    RightColumn.EspBtn.Text = HitboxEspActive and "ESP: ON" or "Bật/Tắt ESP"
+    RightColumn.EspBtn.Text = HitboxEspActive and "Khung Hộp 3D ESP: ON" or "Bật/Tắt Khung Hộp 3D ESP"
+    updateAllESP()
 end)
 
-createBtn("AimBtn", "Bật/Tắt AIM", 70, function()
+createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
     AimActive = not AimActive
-    RightColumn.AimBtn.Text = AimActive and "AIM: ON" or "Bật/Tắt AIM"
+    RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
 end)
 
--- (Thêm các nút khác tùy ý tại đây...)
+createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 140, function()
+    KillAuraActive = not KillAuraActive
+    RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
+end)
 
--- Minimize button
-Instance.new("TextButton", MainFrame).MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
+-- TÍNH NĂNG MỚI CHÈN THẲNG VÀO NÚT CUỐI: TÀNG HÌNH & TỰ HIỆN HITBOX CHO MÌNH
+createButton(RightColumn, "InvisBtn", "Bật Tàng Hình + Self Hitbox", 175, function()
+    InvisibleActive = not InvisibleActive
+    setMyVisibility(InvisibleActive)
+    RightColumn.InvisBtn.Text = InvisibleActive and "Tàng Hình + Hitbox: ON" or "Bật Tàng Hình + Self Hitbox"
+end)
+
+-- 8. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
+local hue = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+    hue = (hue + (deltaTime * 0.1)) % 1
+    GlobalRainbowColor = Color3.fromHSV(hue, 1, 1)
+    for _, object in ipairs(RainbowObjects) do
+        if object and object:IsA("GuiObject") then object.BackgroundColor3 = GlobalRainbowColor end
+    end
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
 OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
