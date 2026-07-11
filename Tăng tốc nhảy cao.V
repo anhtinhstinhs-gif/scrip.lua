@@ -7,9 +7,9 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V23 (GIỮ NGUYÊN GIAO DIỆN CHUẨN)
+-- 1. KHỞI TẠO GIAO DIỆN MENU V23.5
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileFPS_V23"
+ScreenGui.Name = "ModMenuMobileFPS_V23_5"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "AOE Kill & 3D ESP Menu V23.0"
+Title.Text = "AOE Kill & 3D ESP Menu V23.5"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -77,12 +77,12 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (BẢO LƯU 100%)
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG 
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
 local AimActive = false
-local InvisibleActive = false -- Trạng thái tàng hình
+local InvisibleActive = false 
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -92,45 +92,68 @@ local AimDistance = 150
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- CƠ CHẾ TÀNG HÌNH & TỰ TẠO HITBOX XANH CHO BẢN THÂN
-local MyHitboxBoxes = {}
+-- CƠ CHẾ TÀNG HÌNH REAL SERVER-SIDE + SELF HITBOX XANH LÁ LỚN
+local MyVisualBox = nil
+local SavedGrips = {}
 
 local function setMyVisibility(invisible)
     local char = LocalPlayer.Character
     if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
     
-    -- 1. Ẩn/Hiện cơ thể đối với người khác
-    for _, v in pairs(char:GetDescendants()) do
-        if v:IsA("BasePart") or v:IsA("Decal") then
-            v.Transparency = invisible and 1 or 0
-        end
-    end
-    
-    -- 2. Xóa khung hitbox cũ của bản thân nếu có
-    for _, box in ipairs(MyHitboxBoxes) do
-        if box then box:Destroy() end
-    end
-    MyHitboxBoxes = {}
-    
-    -- 3. Nếu đang BẬT tàng hình, tạo khung hộp xanh lá bao quanh chính mình (Chỉ mình thấy)
     if invisible then
-        for _, v in ipairs(char:GetChildren()) do
-            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                local box = Instance.new("SelectionBox")
-                box.Name = "Self_Hitbox_ESP"
-                box.Color3 = Color3.fromRGB(0, 255, 0) -- Màu xanh lá cây giống ảnh của bạn
-                box.LineThickness = 0.03
-                box.Adornee = v
-                box.AlwaysOnTop = true -- Luôn hiển thị xuyên thấu để bạn nhìn thấy
-                box.Parent = v
-                table.insert(MyHitboxBoxes, box)
+        -- 1. Thực hiện Tàng hình Real bằng cách hạ vị trí mô hình hiển thị xuống dưới đất đối với Server, 
+        -- nhưng giữ góc nhìn camera và HRP ở trên cho bạn điều khiển
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                if v.Name ~= "HumanoidRootPart" then
+                    v.Transparency = 1 -- Ẩn hoàn toàn trên máy mình
+                end
+            elseif v:IsA("Decal") then
+                v.Transparency = 1
             end
+        end
+        
+        -- Phá hủy tạm thời phần hiển thị liên kết để Server nghĩ bạn đang ở vị trí khác (Glitch tàng hình)
+        if char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root") then
+            char.LowerTorso.Root.Enabled = false
+        end
+
+        -- 2. Tạo KHUNG HITBOX XANH LÁ TO bao quanh vị trí thực tế của bạn để bạn tự nhận diện
+        if hrp and not MyVisualBox then
+            MyVisualBox = Instance.new("SelectionBox")
+            MyVisualBox.Name = "RealSelfHitbox"
+            MyVisualBox.Color3 = Color3.fromRGB(0, 255, 0) -- Màu xanh lá cây chuẩn như hình
+            MyVisualBox.LineThickness = 0.05
+            MyVisualBox.AlwaysOnTop = true -- Bắt buộc hiện xuyên thấu để bạn luôn thấy
+            MyVisualBox.Adornee = hrp -- Bao bọc lấy phần cốt lõi di chuyển của bạn
+            MyVisualBox.Parent = hrp
+        end
+    else
+        -- TẮT TÀNG HÌNH: Khôi phục lại trạng thái ban đầu
+        if char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root") then
+            char.LowerTorso.Root.Enabled = true
+        end
+        
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 0
+            elseif v:IsA("Decal") and v.Name ~= "face" then
+                v.Transparency = 0
+            end
+        end
+        
+        if MyVisualBox then
+            MyVisualBox:Destroy()
+            MyVisualBox = nil
         end
     end
 end
 
--- Tự động áp dụng lại tàng hình và khung tự nhìn nếu nhân vật hồi sinh
+-- Tự động reset trạng thái khi hồi sinh
 LocalPlayer.CharacterAdded:Connect(function(char)
+    if MyVisualBox then MyVisualBox:Destroy() table.clear(MyHitboxBoxes) MyVisualBox = nil end
     task.wait(0.5)
     local humanoid = char:WaitForChild("Humanoid")
     if humanoid then 
@@ -144,7 +167,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================================================================
--- HÀM TẠO BOX ESP 3D CHO KẺ ĐỊCH (GIỮ NGUYÊN)
+-- HÀM TẠO BOX ESP 3D CHO KỂ ĐỊCH (GIỮ NGUYÊN)
 local function apply3DESP(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
@@ -412,7 +435,7 @@ createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 
     RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
 end)
 
--- TÍNH NĂNG MỚI CHÈN THẲNG VÀO NÚT CUỐI: TÀNG HÌNH & TỰ HIỆN HITBOX CHO MÌNH
+-- NÚT CHỨA TÍNH NĂNG TÀNG HÌNH REAL SERVER-SIDE + HITBOX XANH LÁ
 createButton(RightColumn, "InvisBtn", "Bật Tàng Hình + Self Hitbox", 175, function()
     InvisibleActive = not InvisibleActive
     setMyVisibility(InvisibleActive)
