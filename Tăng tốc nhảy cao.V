@@ -7,9 +7,9 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V23.5
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuMobileFPS_V23_5"
+ScreenGui.Name = "ModMenuMobileFPS_V24"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -46,7 +46,7 @@ MainCorner.Parent = MainFrame
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "AOE Kill & 3D ESP Menu V23.5"
+Title.Text = "AOE Kill & 3D ESP Menu V24.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -77,12 +77,12 @@ RightColumn.BackgroundTransparency = 1
 local RainbowObjects = { OpenButton }
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG 
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
 local AimActive = false
-local InvisibleActive = false 
+local PlatformActive = false -- Trạng thái tấm đế
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -92,68 +92,42 @@ local AimDistance = 150
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- CƠ CHẾ TÀNG HÌNH REAL SERVER-SIDE + SELF HITBOX XANH LÁ LỚN
-local MyVisualBox = nil
-local SavedGrips = {}
+-- QUẢN LÝ TẤM ĐẾ ĐỠ CHÂN (CLIENT-SIDE ONLY)
+local CharacterPlatform = nil
 
-local function setMyVisibility(invisible)
+local function updatePlatform()
     local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    local upperTorso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
-    if invisible then
-        -- 1. Thực hiện Tàng hình Real bằng cách hạ vị trí mô hình hiển thị xuống dưới đất đối với Server, 
-        -- nhưng giữ góc nhìn camera và HRP ở trên cho bạn điều khiển
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                if v.Name ~= "HumanoidRootPart" then
-                    v.Transparency = 1 -- Ẩn hoàn toàn trên máy mình
-                end
-            elseif v:IsA("Decal") then
-                v.Transparency = 1
-            end
+    if PlatformActive and hrp then
+        -- Nếu chưa có tấm đế thì tạo mới hoàn toàn cục bộ (Local)
+        if not CharacterPlatform or not CharacterPlatform.Parent then
+            CharacterPlatform = Instance.new("Part")
+            CharacterPlatform.Name = "ClientWalkPlatform"
+            CharacterPlatform.Size = Vector3.new(5, 0.5, 5) -- Kích thước tấm đế đỡ dưới chân
+            CharacterPlatform.Anchored = true
+            CharacterPlatform.CanCollide = true
+            
+            -- Đặt độ trong suốt cao và đổi màu xanh lá để bạn dễ nhận biết vị trí đứng
+            CharacterPlatform.Material = Enum.Material.ForceField
+            CharacterPlatform.Color = Color3.fromRGB(0, 255, 0)
+            CharacterPlatform.Transparency = 0.4 
+            CharacterPlatform.Parent = workspace
         end
-        
-        -- Phá hủy tạm thời phần hiển thị liên kết để Server nghĩ bạn đang ở vị trí khác (Glitch tàng hình)
-        if char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root") then
-            char.LowerTorso.Root.Enabled = false
-        end
-
-        -- 2. Tạo KHUNG HITBOX XANH LÁ TO bao quanh vị trí thực tế của bạn để bạn tự nhận diện
-        if hrp and not MyVisualBox then
-            MyVisualBox = Instance.new("SelectionBox")
-            MyVisualBox.Name = "RealSelfHitbox"
-            MyVisualBox.Color3 = Color3.fromRGB(0, 255, 0) -- Màu xanh lá cây chuẩn như hình
-            MyVisualBox.LineThickness = 0.05
-            MyVisualBox.AlwaysOnTop = true -- Bắt buộc hiện xuyên thấu để bạn luôn thấy
-            MyVisualBox.Adornee = hrp -- Bao bọc lấy phần cốt lõi di chuyển của bạn
-            MyVisualBox.Parent = hrp
-        end
+        -- Luôn bám sát vị trí dưới chân (cách tâm HumanoidRootPart khoảng 3.25 đơn vị về phía dưới)
+        CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.25, hrp.Position.Z)
     else
-        -- TẮT TÀNG HÌNH: Khôi phục lại trạng thái ban đầu
-        if char:FindFirstChild("LowerTorso") and char.LowerTorso:FindFirstChild("Root") then
-            char.LowerTorso.Root.Enabled = true
-        end
-        
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.Transparency = 0
-            elseif v:IsA("Decal") and v.Name ~= "face" then
-                v.Transparency = 0
-            end
-        end
-        
-        if MyVisualBox then
-            MyVisualBox:Destroy()
-            MyVisualBox = nil
+        -- Nếu tắt tính năng thì xóa tấm đế đi
+        if CharacterPlatform then
+            CharacterPlatform:Destroy()
+            CharacterPlatform = nil
         end
     end
 end
 
--- Tự động reset trạng thái khi hồi sinh
+-- Tự động dọn dẹp tấm đế cũ khi nhân vật hồi sinh
 LocalPlayer.CharacterAdded:Connect(function(char)
-    if MyVisualBox then MyVisualBox:Destroy() table.clear(MyHitboxBoxes) MyVisualBox = nil end
+    if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil end
     task.wait(0.5)
     local humanoid = char:WaitForChild("Humanoid")
     if humanoid then 
@@ -161,13 +135,10 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         humanoid.WalkSpeed = currentSpeed
         humanoid.JumpPower = currentJump 
     end
-    if InvisibleActive then
-        setMyVisibility(true)
-    end
 end)
 
 -- =====================================================================
--- HÀM TẠO BOX ESP 3D CHO KỂ ĐỊCH (GIỮ NGUYÊN)
+-- HÀM TẠO BOX ESP 3D CHO KẺ ĐỊCH (GIỮ NGUYÊN)
 local function apply3DESP(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
@@ -224,7 +195,7 @@ local function getClosestPlayer()
     return closestTarget
 end
 
--- VÒNG LẶP RENDERSTEPPED CHÍNH (GIỮ NGUYÊN)
+-- VÒNG LẶP RENDERSTEPPED CHÍNH
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
@@ -242,6 +213,9 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
+    -- Cập nhật liên tục vị trí tấm đế theo chân người chơi
+    updatePlatform()
 
     local target = getClosestPlayer()
     if AimActive and target then
@@ -384,9 +358,9 @@ local function createButton(parentCol, name, text, yOffset, callback)
 end
 
 -- =====================================================================
--- 7. THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
+-- THIẾT LẬP CÁC NÚT LÊN GIAO DIỆN
 
--- --- CỘT TRÁI (SLIDERS CHỈ SỐ) ---
+-- --- CỘT TRÁI ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
@@ -401,7 +375,7 @@ createSlider(LeftColumn, "Bán kính AOE Quét", 100, 10, 500, 150, function(val
     AimDistance = val
 end)
 
--- --- CỘT PHẢI (NÚT BẤM TÍNH NĂNG) ---
+-- --- CỘT PHẢI ---
 local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
@@ -435,11 +409,10 @@ createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 
     RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
 end)
 
--- NÚT CHỨA TÍNH NĂNG TÀNG HÌNH REAL SERVER-SIDE + HITBOX XANH LÁ
-createButton(RightColumn, "InvisBtn", "Bật Tàng Hình + Self Hitbox", 175, function()
-    InvisibleActive = not InvisibleActive
-    setMyVisibility(InvisibleActive)
-    RightColumn.InvisBtn.Text = InvisibleActive and "Tàng Hình + Hitbox: ON" or "Bật Tàng Hình + Self Hitbox"
+-- NÚT TÍNH NĂNG MỚI: TẤM ĐẾ ĐỠ CHÂN CHỐNG NGÃ CỤC BỘ
+createButton(RightColumn, "PlatformBtn", "Bật Tấm Đế Đỡ Chân", 175, function()
+    PlatformActive = not PlatformActive
+    RightColumn.PlatformBtn.Text = PlatformActive and "Đế Đỡ Chân: BẬT" or "Bật Tấm Đế Đỡ Chân"
 end)
 
 -- 8. HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
