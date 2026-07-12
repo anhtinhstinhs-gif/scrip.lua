@@ -7,22 +7,21 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V24.5 (CHỈ THÊM HÌNH ẢNH)
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24.6
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuCustomTheme_V24_5"
+ScreenGui.Name = "ModMenuCustomTheme_V24_6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- NÚT MỞ MENU HÌNH TRÒN - SỬ DỤNG ẢNH BỘ XƯƠNG CỦA BẠN
+-- 🔴 NÚT MỞ MENU HÌNH TRÒN - SỬ DỤNG ID ẢNH BỘ XƯƠNG CỦA BẠN
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 55, 0, 55) 
 OpenButton.Position = UDim2.new(0, 15, 0, 70) 
 OpenButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 OpenButton.BackgroundTransparency = 0.3
--- Link ảnh bộ xương (file_000000004de8722f8115d876f12477cb)
-OpenButton.Image = "rbxassetid://135158652309194" 
+OpenButton.Image = "rbxassetid://92781042692285" -- ID bộ xương chính xác
 OpenButton.Visible = false
 OpenButton.Parent = ScreenGui
 
@@ -36,7 +35,7 @@ MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 430, 0, 245) 
 MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.2 
+MainFrame.BackgroundTransparency = 0.2
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
@@ -44,13 +43,12 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- HÌNH NỀN MENU - SỬ DỤNG ẢNH NỮ CỦA BẠN
+-- 🔴 HÌNH NỀN MENU - SỬ DỤNG ID ẢNH NỮ CỦA BẠN
 local BackgroundImage = Instance.new("ImageLabel")
 BackgroundImage.Name = "MenuBackground"
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
 BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
--- Link ảnh nữ anime (file_00000000a3c87206994abcea5f3afe9d)
-BackgroundImage.Image = "rbxassetid://106526743937901" 
+BackgroundImage.Image = "rbxassetid://134759374241732" -- ID ảnh nữ chính xác
 BackgroundImage.ScaleType = Enum.ScaleType.Crop
 BackgroundImage.ZIndex = 0 
 BackgroundImage.Parent = MainFrame
@@ -63,7 +61,7 @@ BGCorner.Parent = BackgroundImage
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Anime Theme Menu V24.5"
+Title.Text = "Anime Theme Menu V24.6"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -100,7 +98,7 @@ RightColumn.ZIndex = 2
 local RainbowObjects = {} 
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- GIỮ NGUYÊN HOÀN TOÀN TRẠNG THÁI CÁC TÍNH NĂNG CŨ
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (GIỮ NGUYÊN TOÀN BỘ)
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
@@ -115,7 +113,7 @@ local AimDistance = 150
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- GIỮ NGUYÊN: QUẢN LÝ TẤM ĐẾ ĐỠ CHÂN CỤC BỘ
+-- QUẢN LÝ TẤM ĐẾ ĐỠ CHÂN CỤC BỘ (GIỮ NGUYÊN)
 local CharacterPlatform = nil
 
 local function updatePlatform()
@@ -155,7 +153,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================================================================
--- GIỮ NGUYÊN: HÀM TẠO BOX ESP 3D KẺ ĐỊCH
+-- HÀM TẠO BOX ESP 3D (GIỮ NGUYÊN)
 local function apply3DESP(character)
     for _, v in ipairs(character:GetChildren()) do
         if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
@@ -193,7 +191,7 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 -- =====================================================================
--- GIỮ NGUYÊN: HÀM AIMBOT KHÓA MỤC TIÊU
+-- HÀM AIMBOT (GIỮ NGUYÊN)
 local function getClosestPlayer()
     local closestTarget = nil
     local maxDist = AimDistance
@@ -212,7 +210,7 @@ local function getClosestPlayer()
     return closestTarget
 end
 
--- GIỮ NGUYÊN: VÒNG LẶP RENDERSTEPPED CHÍNH
+-- VÒNG LẶP RENDERSTEPPED CHÍNH (GIỮ NGUYÊN)
 RunService.RenderStepped:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
@@ -284,7 +282,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- GIỮ NGUYÊN: TỐI ƯU HÓA FPS
+-- TỐI ƯU HÓA FPS (GIỮ NGUYÊN)
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
     if OptimizeLevel >= 1 then
@@ -319,7 +317,7 @@ local function boostFPSSystem()
     RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- GIỮ NGUYÊN: DI CHUYỂN MENU TRÊN MOBILE
+-- DI CHUYỂN MENU TRÊN MOBILE (GIỮ NGUYÊN)
 local dragging, dragInput, dragStart, startPos
 local function update(input)
     local delta = input.Position - dragStart
@@ -334,7 +332,7 @@ end)
 MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- GIỮ NGUYÊN: HÀM XÂY DỰNG SLIDER VÀ BUTTON
+-- HÀM XÂY DỰNG SLIDER VÀ BUTTON (GIỮ NGUYÊN)
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, 0, 0, 18); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
@@ -374,7 +372,7 @@ local function createButton(parentCol, name, text, yOffset, callback)
 end
 
 -- =====================================================================
--- THIẾT LẬP CÁC PHẦN TỬ LÊN HAI CỘT MENU
+-- THIẾT LẬP CÁC NÚT LÊN GIAO DIỆN
 
 -- --- CỘT TRÁI ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
@@ -430,7 +428,7 @@ createButton(RightColumn, "PlatformBtn", "Bật Tấm Đế Đỡ Chân", 175, f
     RightColumn.PlatformBtn.Text = PlatformActive and "Đế Đỡ Chân: BẬT" or "Bật Tấm Đế Đỡ Chân"
 end)
 
--- HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ
+-- HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ CHO THANH TRƯỢT VÀ NÚT BẤM
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
@@ -440,5 +438,6 @@ RunService.RenderStepped:Connect(function(deltaTime)
     end
 end)
 
+-- ĐÓNG/MỞ MENU MƯỢT MÀ
 MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
 OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
