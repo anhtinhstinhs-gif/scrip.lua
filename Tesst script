@@ -1,0 +1,48 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Khởi tạo Gui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ModMenuCustomTheme_Fixed"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Khung Menu Chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 430, 0, 245) 
+MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.Active = true
+MainFrame.Parent = ScreenGui
+
+-- 🔴 GIẢI PHÁP TẢI ẢNH NỀN KHÔNG CẦN ASSET ID (DÙNG HTTP)
+local BackgroundImage = Instance.new("ImageLabel")
+BackgroundImage.Name = "MenuBackground"
+BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+BackgroundImage.ScaleType = Enum.ScaleType.Crop
+BackgroundImage.ZIndex = 0
+BackgroundImage.Parent = MainFrame
+
+-- Tự động viết ảnh thô từ internet vào bộ nhớ máy để hiển thị bypass Roblox Privacy
+local success, err = pcall(function()
+    -- Ghi tệp ảnh cục bộ (nếu Executor của bạn hỗ trợ writefile)
+    if writefile and downloadfile then
+        if not isfile("anime_bg.png") then
+            downloadfile("anime_bg.png", "https://i.imgur.com/8N41dXZ.png") -- Link ảnh nữ dự phòng dạng trực tiếp
+        end
+        BackgroundImage.Image = getcustomasset("anime_bg.png")
+    else
+        -- Nếu dùng Executor cơ bản, ép hệ thống nhận dạng chuỗi số Asset gốc
+        BackgroundImage.Image = "rbxassetid://134759374241732"
+    end
+end)
+
+-- Nếu vẫn lỗi đen màn hình, ép menu về màu tối Neon cực đẹp để bạn không bị lỗi giao diện
+if not success or BackgroundImage.Image == "" then
+    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 18, 28)
+    local NeonLine = Instance.new("Frame", MainFrame)
+    NeonLine.Size = UDim2.new(1, 0, 0, 2)
+    NeonLine.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
+end
