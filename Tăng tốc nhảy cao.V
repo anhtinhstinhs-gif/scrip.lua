@@ -7,21 +7,20 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V24.7
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24.8
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuCustomTheme_V24_7"
+ScreenGui.Name = "ModMenuCustomTheme_V24_8"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 🔴 NÚT O MỞ MENU HÌNH TRÒN - FIX HIỂN THỊ ẢNH BỘ XƯƠNG CỦA BẠN
+-- 🔴 NÚT O MỞ MENU HÌNH TRÒN BỘ XƯƠNG
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 55, 0, 55) 
 OpenButton.Position = UDim2.new(0, 15, 0, 70) 
 OpenButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 OpenButton.BackgroundTransparency = 0.3
--- Áp dụng định dạng rbxthumb đã test thành công cho ảnh bộ xương
 OpenButton.Image = "rbxthumb://type=Asset&id=92781042692285&w=420&h=420"
 OpenButton.Visible = false
 OpenButton.Parent = ScreenGui
@@ -30,13 +29,13 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG MENU CHÍNH
+-- KHUNG MENU CHÍNH (LÀM TRONG SUỐT ĐỂ HIỆN NỀN SÁNG)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 245) 
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -122)
+MainFrame.Size = UDim2.new(0, 450, 0, 250) 
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.2
+MainFrame.BackgroundTransparency = 0.95 -- Tăng tối đa độ trong suốt để nền sáng rõ, không bị màu đen che khuất
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
 
@@ -44,14 +43,14 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- 🔴 HÌNH NỀN MENU - FIX HIỂN THỊ ẢNH NỮ CỦA BẠN
+-- 🔴 HÌNH NỀN MENU - CHỈNH LẠI ĐỂ THẤY ĐẦU VÀ FULL HÌNH NHÂN VẬT NỮ
 local BackgroundImage = Instance.new("ImageLabel")
 BackgroundImage.Name = "MenuBackground"
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
 BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
--- Áp dụng định dạng rbxthumb đã test thành công cho ảnh nền nữ anime
 BackgroundImage.Image = "rbxthumb://type=Asset&id=134759374241732&w=420&h=420"
-BackgroundImage.ScaleType = Enum.ScaleType.Crop
+BackgroundImage.ScaleType = Enum.ScaleType.Stretch -- Căn đều vừa vặn khung hình để thấy toàn bộ phần đầu nhân vật
+BackgroundImage.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Giữ nguyên độ sáng gốc của ảnh
 BackgroundImage.ZIndex = 0 
 BackgroundImage.Parent = MainFrame
 
@@ -63,7 +62,7 @@ BGCorner.Parent = BackgroundImage
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Anime Theme Menu V24.7"
+Title.Text = "Anime Theme Menu V24.8"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -84,16 +83,16 @@ MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.ZIndex = 2
 MinimizeButton.Parent = MainFrame
 
--- HAI CỘT CHỨA TÍNH NĂNG
+-- 🔴 PHÂN CHIA LẠI BỐ CỤC: THU GỌN CÁC CỘT ĐỂ TRÁNH CHE KHUẤT NHÂN VẬT ANIME ĐỨNG GIỮA
 local LeftColumn = Instance.new("Frame", MainFrame)
-LeftColumn.Size = UDim2.new(0.5, -15, 1, -45)
+LeftColumn.Size = UDim2.new(0.45, -10, 1, -45)
 LeftColumn.Position = UDim2.new(0, 10, 0, 40)
 LeftColumn.BackgroundTransparency = 1
 LeftColumn.ZIndex = 2
 
 local RightColumn = Instance.new("Frame", MainFrame)
-RightColumn.Size = UDim2.new(0.5, -15, 1, -45)
-RightColumn.Position = UDim2.new(0.5, 5, 0, 40)
+RightColumn.Size = UDim2.new(0.38, -10, 1, -45) -- Thu hẹp độ rộng nút bấm để gọn gàng hơn hẳn
+RightColumn.Position = UDim2.new(1, -175, 0, 40) -- Đẩy sát nút bấm về rìa phải menu
 RightColumn.BackgroundTransparency = 1
 RightColumn.ZIndex = 2
 
@@ -316,7 +315,7 @@ local function boostFPSSystem()
             end
         end
     end
-    RightColumn.FpsBoostBtn.Text = "Siêu Tối Ưu FPS: CẤP " .. OptimizeLevel
+    RightColumn.FpsBoostBtn.Text = "FPS: CẤP " .. OptimizeLevel
 end
 
 -- DI CHUYỂN MENU TRÊN MOBILE (GIỮ NGUYÊN)
@@ -334,17 +333,17 @@ end)
 MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
 UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 
--- HÀM XÂY DỰNG SLIDER VÀ BUTTON (GIỮ NGUYÊN)
+-- HÀM XÂY DỰNG SLIDER VÀ BUTTON (GIỮ NGUYÊN CẤU TRÚC ĐỂ TRÁNH LỖI)
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 0, 18); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
-    Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextSize = 13; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.ZIndex = 2; Label.Parent = parentCol
+    Label.Size = UDim2.new(1, 0, 0, 16); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextSize = 12; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.ZIndex = 2; Label.Parent = parentCol
 
     local SliderBar = Instance.new("Frame")
-    SliderBar.Size = UDim2.new(1, 0, 0, 8); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 20); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.ZIndex = 2; SliderBar.Parent = parentCol
+    SliderBar.Size = UDim2.new(1, 0, 0, 6); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 18); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.ZIndex = 2; SliderBar.Parent = parentCol
 
     local SliderBtn = Instance.new("TextButton")
-    SliderBtn.Size = UDim2.new(0, 16, 0, 16); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.ZIndex = 2; SliderBtn.Parent = SliderBar
+    SliderBtn.Size = UDim2.new(0, 14, 0, 14); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.ZIndex = 2; SliderBtn.Parent = SliderBar
     local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(1, 0); BtnCorner.Parent = SliderBtn
     table.insert(RainbowObjects, SliderBtn)
 
@@ -355,7 +354,7 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
         if sliding and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local mousePos = input.Position.X; local barStart = SliderBar.AbsolutePosition.X; local barWidth = SliderBar.AbsoluteSize.X
             local percentage = math.clamp((mousePos - barStart) / barWidth, 0, 1)
-            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 16), 0, -4)
+            SliderBtn.Position = UDim2.new(0, percentage * (barWidth - 14), 0, -4)
             local calculatedValue = math.floor(minVal + (percentage * (maxVal - minVal)))
             Label.Text = text .. ": " .. calculatedValue
             callback(calculatedValue)
@@ -365,8 +364,8 @@ end
 
 local function createButton(parentCol, name, text, yOffset, callback)
     local Btn = Instance.new("TextButton")
-    Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 26); Btn.Position = UDim2.new(0, 0, 0, yOffset); Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text
-    Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.TextSize = 13; Btn.Font = Enum.Font.SourceSansBold; Btn.ZIndex = 2; Btn.Parent = parentCol
+    Btn.Name = name; Btn.Size = UDim2.new(1, 0, 0, 24); Btn.Position = UDim2.new(0, 0, 0, yOffset); Btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Btn.Text = text
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255); Btn.TextSize = 12; Btn.Font = Enum.Font.SourceSansBold; Btn.ZIndex = 2; Btn.Parent = parentCol
     local BtnCorner = Instance.new("UICorner"); BtnCorner.CornerRadius = UDim.new(0, 5); BtnCorner.Parent = Btn
     table.insert(RainbowObjects, Btn)
     Btn.MouseButton1Click:Connect(callback)
@@ -376,27 +375,27 @@ end
 -- =====================================================================
 -- THIẾT LẬP CÁC NÚT LÊN GIAO DIỆN
 
--- --- CỘT TRÁI ---
+-- --- CỘT TRÁI (THANH TRƯỢT KÍCH THƯỚC VỪA VẶN) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val)
     currentSpeed = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = val end
 end)
 
-createSlider(LeftColumn, "Độ cao nhảy", 50, 50, 300, 50, function(val)
+createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val)
     currentJump = val
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = val end
 end)
 
-createSlider(LeftColumn, "Bán kính AOE Quét", 100, 10, 500, 150, function(val)
+createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val)
     AimDistance = val
 end)
 
--- --- CỘT PHẢI ---
-local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Siêu Tối Ưu FPS: CLICK", 0, function()
+-- --- CỘT PHẢI (NÚT BẤM THU NHỎ GỌN GÀNG ĐẨY SÁT GÓC RÌA) ---
+local FpsBoostBtn = createButton(RightColumn, "FpsBoostBtn", "Tối Ưu FPS: CLICK", 0, function()
     boostFPSSystem()
 end)
 
-createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, function()
+createButton(RightColumn, "SpinBtn", "Xoay nhân vật", 30, function()
     SpinActive = not SpinActive
     local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
@@ -409,25 +408,25 @@ createButton(RightColumn, "SpinBtn", "Bật/Tắt xoay nhân vật", 35, functio
     end
 end)
 
-createButton(RightColumn, "EspBtn", "Bật/Tắt Khung Hộp 3D ESP", 70, function()
+createButton(RightColumn, "EspBtn", "Khung Hộp 3D ESP", 60, function()
     HitboxEspActive = not HitboxEspActive
-    RightColumn.EspBtn.Text = HitboxEspActive and "Khung Hộp 3D ESP: ON" or "Bật/Tắt Khung Hộp 3D ESP"
+    RightColumn.EspBtn.Text = HitboxEspActive and "3D ESP: ON" or "Khung Hộp 3D ESP"
     updateAllESP()
 end)
 
-createButton(RightColumn, "AimBtn", "Bật/Tắt khóa mục tiêu AIM", 105, function()
+createButton(RightColumn, "AimBtn", "Mục tiêu AIM", 90, function()
     AimActive = not AimActive
-    RightColumn.AimBtn.Text = AimActive and "Khóa mục tiêu AIM: ON" or "Bật/Tắt khóa mục tiêu AIM"
+    RightColumn.AimBtn.Text = AimActive and "AIM: ON" or "Mục tiêu AIM"
 end)
 
-createButton(RightColumn, "SwordBtn", "Bật/Tắt AOE Kill Toàn Bản Đồ", 140, function()
+createButton(RightColumn, "SwordBtn", "AOE Kill Toàn Bản Đồ", 120, function()
     KillAuraActive = not KillAuraActive
-    RightColumn.SwordBtn.Text = KillAuraActive and "AOE Kill Aura: ON" or "Bật/Tắt AOE Kill Toàn Bản Đồ"
+    RightColumn.SwordBtn.Text = KillAuraActive and "Kill Aura: ON" or "AOE Kill Toàn Bản Đồ"
 end)
 
-createButton(RightColumn, "PlatformBtn", "Bật Tấm Đế Đỡ Chân", 175, function()
+createButton(RightColumn, "PlatformBtn", "Tấm Đế Đỡ Chân", 150, function()
     PlatformActive = not PlatformActive
-    RightColumn.PlatformBtn.Text = PlatformActive and "Đế Đỡ Chân: BẬT" or "Bật Tấm Đế Đỡ Chân"
+    RightColumn.PlatformBtn.Text = PlatformActive and "Đế Chân: BẬT" or "Tấm Đế Đỡ Chân"
 end)
 
 -- HIỆU ỨNG ĐỔI MÀU CẦU VỒNG ĐỒNG BỘ CHO THANH TRƯỢT VÀ NÚT BẤM
