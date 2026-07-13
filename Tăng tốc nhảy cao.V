@@ -7,21 +7,22 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V24.6
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24.7
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuCustomTheme_V24_6"
+ScreenGui.Name = "ModMenuCustomTheme_V24_7"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 🔴 NÚT MỞ MENU HÌNH TRÒN - SỬ DỤNG ID ẢNH BỘ XƯƠNG CỦA BẠN
+-- 🔴 NÚT O MỞ MENU HÌNH TRÒN - FIX HIỂN THỊ ẢNH BỘ XƯƠNG CỦA BẠN
 local OpenButton = Instance.new("ImageButton")
 OpenButton.Name = "OpenButton"
 OpenButton.Size = UDim2.new(0, 55, 0, 55) 
 OpenButton.Position = UDim2.new(0, 15, 0, 70) 
 OpenButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 OpenButton.BackgroundTransparency = 0.3
-OpenButton.Image = "rbxassetid://92781042692285" -- ID bộ xương chính xác
+-- Áp dụng định dạng rbxthumb đã test thành công cho ảnh bộ xương
+OpenButton.Image = "rbxthumb://type=Asset&id=92781042692285&w=420&h=420"
 OpenButton.Visible = false
 OpenButton.Parent = ScreenGui
 
@@ -43,12 +44,13 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- 🔴 HÌNH NỀN MENU - SỬ DỤNG ID ẢNH NỮ CỦA BẠN
+-- 🔴 HÌNH NỀN MENU - FIX HIỂN THỊ ẢNH NỮ CỦA BẠN
 local BackgroundImage = Instance.new("ImageLabel")
 BackgroundImage.Name = "MenuBackground"
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
 BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
-BackgroundImage.Image = "rbxassetid://134759374241732" -- ID ảnh nữ chính xác
+-- Áp dụng định dạng rbxthumb đã test thành công cho ảnh nền nữ anime
+BackgroundImage.Image = "rbxthumb://type=Asset&id=134759374241732&w=420&h=420"
 BackgroundImage.ScaleType = Enum.ScaleType.Crop
 BackgroundImage.ZIndex = 0 
 BackgroundImage.Parent = MainFrame
@@ -61,7 +63,7 @@ BGCorner.Parent = BackgroundImage
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Anime Theme Menu V24.6"
+Title.Text = "Anime Theme Menu V24.7"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
