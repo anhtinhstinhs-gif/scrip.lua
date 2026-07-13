@@ -1,0 +1,121 @@
+import pygame
+import sys
+
+# Khởi tạo
+pygame.init()
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Điều khiển cánh tay ảo - 2 nút")
+clock = pygame.time.Clock()
+
+# Màu sắc
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+
+# Vị trí cánh tay (gốc cố định)
+BASE_X, BASE_Y = WIDTH // 2, HEIGHT // 2 + 50
+ARM_LENGTH = 150
+
+# Góc của từng cánh tay (radian)
+left_angle = -0.5   # tay trái
+right_angle = 0.5   # tay phải
+
+# Kích thước nút
+BUTTON_SIZE = 80
+LEFT_BUTTON_X = 50
+RIGHT_BUTTON_X = WIDTH - 50 - BUTTON_SIZE
+BUTTON_Y = HEIGHT - 100
+
+# Trạng thái kéo
+dragging_left = False
+dragging_right = False
+drag_offset_x = 0
+drag_offset_y = 0
+
+def draw_arm(angle, color, flip=False):
+    """Vẽ một cánh tay đơn giản (1 khớp)"""
+    end_x = BASE_X + ARM_LENGTH * pygame.math.Vector2(1, 0).rotate(-angle * 180 / 3.14159).x
+    end_y = BASE_Y + ARM_LENGTH * pygame.math.Vector2(1, 0).rotate(-angle * 180 / 3.14159).y
+    if flip:
+        end_x = BASE_X - (end_x - BASE_X)
+    pygame.draw.line(screen, color, (BASE_X, BASE_Y), (end_x, end_y), 12)
+    pygame.draw.circle(screen, color, (int(end_x), int(end_y)), 15)
+    pygame.draw.circle(screen, BLACK, (BASE_X, BASE_Y), 10)
+
+def draw_button(x, y, color, label):
+    """Vẽ nút tròn"""
+    pygame.draw.circle(screen, color, (x + BUTTON_SIZE//2, y + BUTTON_SIZE//2), BUTTON_SIZE//2)
+    pygame.draw.circle(screen, BLACK, (x + BUTTON_SIZE//2, y + BUTTON_SIZE//2), BUTTON_SIZE//2, 3)
+    font = pygame.font.Font(None, 30)
+    text = font.render(label, True, WHITE)
+    screen.blit(text, (x + BUTTON_SIZE//2 - text.get_width()//2, y + BUTTON_SIZE//2 - text.get_height()//2))
+
+# Vòng lặp chính
+running = True
+while running:
+    screen.fill(WHITE)
+    
+    # Vẽ cánh tay
+    draw_arm(left_angle, RED, flip=False)   # tay trái (màu đỏ)
+    draw_arm(right_angle, BLUE, flip=True)  # tay phải (màu xanh)
+    
+    # Vẽ nút bấm
+    draw_button(LEFT_BUTTON_X, BUTTON_Y, RED, "TRÁI")
+    draw_button(RIGHT_BUTTON_X, BUTTON_Y, BLUE, "PHẢI")
+    
+    # Xử lý sự kiện
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = event.pos
+            # Kiểm tra nút trái
+            if (mx - LEFT_BUTTON_X - BUTTON_SIZE//2)**2 + (my - BUTTON_Y - BUTTON_SIZE//2)**2 <= (BUTTON_SIZE//2)**2:
+                dragging_left = True
+                drag_offset_x = mx - LEFT_BUTTON_X
+                drag_offset_y = my - BUTTON_Y
+            # Kiểm tra nút phải
+            elif (mx - RIGHT_BUTTON_X - BUTTON_SIZE//2)**2 + (my - BUTTON_Y - BUTTON_SIZE//2)**2 <= (BUTTON_SIZE//2)**2:
+                dragging_right = True
+                drag_offset_x = mx - RIGHT_BUTTON_X
+                drag_offset_y = my - BUTTON_Y
+        
+        elif event.type == pygame.MOUSEBUTTONUP:
+            dragging_left = False
+            dragging_right = False
+        
+        elif event.type == pygame.MOUSEMOTION:
+            mx, my = event.pos
+            if dragging_left:
+                # Di chuyển nút trái (kéo theo chuột)
+                new_x = mx - drag_offset_x
+                new_y = my - drag_offset_y
+                # Giới hạn trong màn hình
+                new_x = max(0, min(WIDTH - BUTTON_SIZE, new_x))
+                new_y = max(0, min(HEIGHT - BUTTON_SIZE, new_y))
+                LEFT_BUTTON_X, BUTTON_Y = new_x, new_y
+                # Cập nhật góc tay trái theo vị trí nút
+                left_angle = -((LEFT_BUTTON_X / WIDTH) * 2 - 1) * 0.8
+            if dragging_right:
+                new_x = mx - drag_offset_x
+                new_y = my - drag_offset_y
+                new_x = max(0, min(WIDTH - BUTTON_SIZE, new_x))
+                new_y = max(0, min(HEIGHT - BUTTON_SIZE, new_y))
+                RIGHT_BUTTON_X, BUTTON_Y = new_x, new_y
+                right_angle = ((RIGHT_BUTTON_X / WIDTH) * 2 - 1) * 0.8
+    
+    # Hiển thị trạng thái
+    font = pygame.font.Font(None, 24)
+    status = f"Trái: {round(left_angle,2)} rad | Phải: {round(right_angle,2)} rad"
+    screen.blit(font.render(status, True, BLACK), (10, 10))
+    
+    pygame.display.flip()
+    clock.tick(60)
+
+pygame.quit()
+sys.exit()
