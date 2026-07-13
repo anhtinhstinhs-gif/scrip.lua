@@ -1,3 +1,6 @@
+-- Chờ 1 giây để đảm bảo game tải ổn định trước khi tạo giao diện
+task.wait(1)
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,9 +10,9 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V24.9.5
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24.9.6 CHUẨN
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModMenuCustomTheme_V24_9_5"
+ScreenGui.Name = "ModMenuCustomTheme_V24_9_6"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -32,7 +35,7 @@ OpenCorner.Parent = OpenButton
 -- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 260) -- Tăng nhẹ chiều cao để vừa nút mới
+MainFrame.Size = UDim2.new(0, 450, 0, 260) 
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -130)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.BackgroundTransparency = 0.95
@@ -60,7 +63,7 @@ BGCorner.Parent = BackgroundImage
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0, 250, 0, 35)
 Title.Position = UDim2.new(0, 15, 0, 0)
-Title.Text = "Anime Theme Menu V24.9.5"
+Title.Text = "Anime Theme Menu V24.9.6"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
@@ -83,26 +86,26 @@ MinimizeButton.Parent = MainFrame
 
 -- BỐ CỤC HAI CỘT THU GỌN SÁT RÌA
 local LeftColumn = Instance.new("Frame", MainFrame)
-LeftColumn.Size = UDim2.new(0.45, -10, 1, -45)
+LeftColumn.Size = UDim2.new(0, 190, 1, -45)
 LeftColumn.Position = UDim2.new(0, 10, 0, 40)
 LeftColumn.BackgroundTransparency = 1
 LeftColumn.ZIndex = 2
 
 local RightColumn = Instance.new("Frame", MainFrame)
-RightColumn.Size = UDim2.new(0.42, -10, 1, -45)
-RightColumn.Position = UDim2.new(1, -190, 0, 40)
+RightColumn.Size = UDim2.new(0, 190, 1, -45)
+RightColumn.Position = UDim2.new(1, -200, 0, 40)
 RightColumn.BackgroundTransparency = 1
 RightColumn.ZIndex = 2
 
 local RainbowObjects = {} 
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (GIỮ NGUYÊN & THÊM BIẾN AIM)
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
 local AimActive = false
-local AimHoldMouseActive = false -- Biến kiểm soát chế độ giữ chuột PC
+local AimHoldMouseActive = false -- Biến kiểm soát gạt giữ chuột
 local PlatformActive = false 
 
 local OptimizeLevel = 0 
@@ -113,7 +116,7 @@ local AimDistance = 150
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN (SWITCH UI) Y HỆT ẢNH MẪU
+-- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN (SWITCH UI) THEO ẢNH MẪU CỦA BẠN
 local function createToggleSwitch(parentCol, text, yOffset, callback)
     local Container = Instance.new("Frame")
     Container.Size = UDim2.new(1, 0, 0, 22)
@@ -123,21 +126,22 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     Container.Parent = parentCol
 
     local TextLabel = Instance.new("TextLabel")
-    TextLabel.Size = UDim2.new(0.55, 0, 1, 0)
+    TextLabel.Size = UDim2.new(0.65, 0, 1, 0)
     TextLabel.Position = UDim2.new(0, 0, 0, 0)
     TextLabel.BackgroundTransparency = 1
     TextLabel.Text = text
     TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabel.TextSize = 11
+    TextLabel.TextSize = 12
     TextLabel.Font = Enum.Font.SourceSansBold
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
     TextLabel.ZIndex = 2
     TextLabel.Parent = Container
 
+    -- Khung công tắc bo tròn hình con nhộng
     local SwitchBase = Instance.new("TextButton")
-    SwitchBase.Size = UDim2.new(0, 50, 0, 20)
-    SwitchBase.Position = UDim2.new(1, -52, 0, 1)
-    SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69) -- ĐỎ (OFF)
+    SwitchBase.Size = UDim2.new(0, 45, 0, 18)
+    SwitchBase.Position = UDim2.new(1, -48, 0, 2)
+    SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69) -- Mặc định màu ĐỎ
     SwitchBase.Text = ""
     SwitchBase.ZIndex = 2
     SwitchBase.Parent = Container
@@ -146,6 +150,7 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     BaseCorner.CornerRadius = UDim.new(1, 0)
     BaseCorner.Parent = SwitchBase
 
+    -- Chữ ON/OFF nhỏ bên trong nút
     local StatusText = Instance.new("TextLabel")
     StatusText.Size = UDim2.new(1, 0, 1, 0)
     StatusText.BackgroundTransparency = 1
@@ -153,12 +158,13 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
     StatusText.TextSize = 9
     StatusText.Font = Enum.Font.SourceSansBold
-    StatusText.Position = UDim2.new(0, 8, 0, 0)
+    StatusText.Position = UDim2.new(0, 6, 0, 0)
     StatusText.ZIndex = 2
     StatusText.Parent = SwitchBase
 
+    -- Chấm gạt tròn màu trắng
     local CircleSlider = Instance.new("Frame")
-    CircleSlider.Size = UDim2.new(0, 16, 0, 16)
+    CircleSlider.Size = UDim2.new(0, 14, 0, 14)
     CircleSlider.Position = UDim2.new(0, 2, 0, 2)
     CircleSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     CircleSlider.ZIndex = 3
@@ -172,22 +178,22 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     SwitchBase.MouseButton1Click:Connect(function()
         isOn = not isOn
         if isOn then
-            SwitchBase.BackgroundColor3 = Color3.fromRGB(40, 167, 69) -- XANH LÁ (ON)
-            CircleSlider.Position = UDim2.new(1, -18, 0, 2)
+            SwitchBase.BackgroundColor3 = Color3.fromRGB(40, 167, 69) -- Đổi sang XANH LÁ
+            CircleSlider.Position = UDim2.new(1, -16, 0, 2) -- Trượt qua phải
             StatusText.Text = "ON"
-            StatusText.Position = UDim2.new(0, -8, 0, 0)
+            StatusText.Position = UDim2.new(0, -6, 0, 0)
         else
-            SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
-            CircleSlider.Position = UDim2.new(0, 2, 0, 2)
+            SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69) -- Đổi về ĐỎ
+            CircleSlider.Position = UDim2.new(0, 2, 0, 2) -- Trượt qua trái
             StatusText.Text = "OFF"
-            StatusText.Position = UDim2.new(0, 8, 0, 0)
+            StatusText.Position = UDim2.new(0, 6, 0, 0)
         end
         callback(isOn)
     end)
 end
 
 -- =====================================================================
--- LOGIC KIỂM TRA TƯỜNG / VẬT CẢN (WALL CHECK)
+-- HÀM KIỂM TRA TƯỜNG CHẮN (WALL CHECK RAYCAST)
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
@@ -203,14 +209,14 @@ local function isPlayerVisible(targetChar)
     
     local raycastResult = workspace:Raycast(startPos, direction, rayParams)
     
-    -- Nếu không chạm vật cản nào giữa đường -> Nhìn thấy rõ
+    -- Trường hợp: Không chạm bất cứ block/tường nào ở giữa đường truyền thẳng -> Hợp lệ
     if not raycastResult then
         return true
     end
     return false
 end
 
--- HÀM LẤY NGƯỜI CHƠI GẦN NHẤT VÀ KHÔNG BỊ CẢN
+-- HÀM QUÉT MỤC TIÊU GẦN NHẤT THEO ĐIỀU KIỆN
 local function getClosestPlayer()
     local closestTarget = nil
     local maxDist = AimDistance
@@ -220,10 +226,10 @@ local function getClosestPlayer()
             if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
                 local dist = (plr.Character.Head.Position - myPos).Magnitude
                 if dist < maxDist then
-                    -- Trường hợp: Có tường/block chắn -> Tự động bỏ qua mục tiêu đó
+                    -- Kiểm tra xem mục tiêu có bị vật cản che hay không
                     if isPlayerVisible(plr.Character) then
                         maxDist = dist
-                        closestTarget = plr.Character.Head -- Aim chuẩn vào ĐẦU
+                        closestTarget = plr.Character.Head -- Aim chuẩn thẳng vào ĐẦU mục tiêu
                     end
                 end
             end
@@ -233,9 +239,75 @@ local function getClosestPlayer()
 end
 
 -- =====================================================================
--- VÒNG LẶP RENDERSTEPPED CHÍNH (XỬ LÝ 4 TRƯỜNG HỢP AIM + TÍNH NĂNG CŨ)
+-- HỆ THỐNG LOGIC ĐẾ ĐỠ CHÂN & ESP 3D CŨ (GIỮ NGUYÊN)
+
+local CharacterPlatform = nil
+local function updatePlatform()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if PlatformActive and hrp then
+        if not CharacterPlatform or not CharacterPlatform.Parent then
+            CharacterPlatform = Instance.new("Part")
+            CharacterPlatform.Name = "ClientWalkPlatform"
+            CharacterPlatform.Size = Vector3.new(5, 0.5, 5)
+            CharacterPlatform.Anchored = true -- Sửa từ lỗi Ancored cũ sang Anchored chuẩn
+            CharacterPlatform.CanCollide = true
+            CharacterPlatform.Material = Enum.Material.ForceField
+            CharacterPlatform.Color = Color3.fromRGB(0, 255, 0)
+            CharacterPlatform.Transparency = 0.4 
+            CharacterPlatform.Parent = workspace
+        end
+        CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.25, hrp.Position.Z)
+    else
+        if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil end
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil end
+    task.wait(0.5)
+    local humanoid = char:WaitForChild("Humanoid")
+    if humanoid then 
+        humanoid.UseJumpPower = true
+        humanoid.WalkSpeed = currentSpeed
+        humanoid.JumpPower = currentJump 
+    end
+end)
+
+local function apply3DESP(character)
+    for _, v in ipairs(character:GetChildren()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            local oldEsp = v:FindFirstChild("3DESP_Box")
+            if oldEsp then oldEsp:Destroy() end
+            if HitboxEspActive then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Name = "3DESP_Box"
+                box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04)
+                box.AlwaysOnTop = true
+                box.ZIndex = 5
+                box.Color3 = Color3.fromRGB(255, 255, 255)
+                box.Transparency = 0.4
+                box.Adornee = v
+                box.Parent = v
+            end
+        end
+    end
+end
+
+local function updateAllESP()
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character then apply3DESP(plr.Character) end
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    plr.CharacterAdded:Connect(function(char) task.wait(0.5) if HitboxEspActive then apply3DESP(char) end end)
+end)
+
+-- =====================================================================
+-- VÒNG LẶP RENDERSTEPPED CHÍNH (XỬ LÝ TOÀN BỘ 4 ĐIỀU KIỆN HOẠT ĐỘNG CHUẨN)
 RunService.RenderStepped:Connect(function()
-    -- Giữ nguyên hệ thống gán Speed và Jump cũ
+    -- Đồng bộ Tốc độ chạy & Độ cao nhảy liên tục
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local targetHumanoid = LocalPlayer.Character.Humanoid
         if targetHumanoid.WalkSpeed ~= currentSpeed then targetHumanoid.WalkSpeed = currentSpeed end
@@ -247,42 +319,28 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Giữ nguyên Tấm đế đỡ chân
-    if PlatformActive and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        if not CharacterPlatform or not CharacterPlatform.Parent then
-            CharacterPlatform = Instance.new("Part")
-            CharacterPlatform.Name = "ClientWalkPlatform"
-            CharacterPlatform.Size = Vector3.new(5, 0.5, 5)
-            CharacterPlatform.Ancored = true; CharacterPlatform.Anchored = true; CharacterPlatform.CanCollide = true
-            CharacterPlatform.Material = Enum.Material.ForceField; CharacterPlatform.Color = Color3.fromRGB(0, 255, 0)
-            CharacterPlatform.Transparency = 0.4; CharacterPlatform.Parent = workspace
-        end
-        CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.25, hrp.Position.Z)
-    else
-        if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil end
-    end
+    updatePlatform()
 
-    -- XỬ LÝ LOGIC AIMBOT ĐA NỀN TẢNG THÔNG MINH
+    -- VẬN HÀNH AIMBOT ĐA NỀN TẢNG (4 TRƯỜNG HỢP CỦA BẠN)
     if AimActive then
         local targetHead = getClosestPlayer()
         
-        -- Trường hợp: Có người chơi hợp lệ & không bị cản
+        -- Trường hợp: Có người chơi hợp lệ gần nhất & không có tường/block chắn trước mặt
         if targetHead then
             if AimHoldMouseActive then
-                -- Bật Giữ chuột: Chỉ lock camera khi đè chuột trái (Dành cho PC)
+                -- Bật Giữ chuột: Chỉ khóa camera khi đè giữ chặt chuột trái (Dành cho PC)
                 if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
                 end
             else
-                -- Tắt Giữ chuột: Tự động khóa thẳng vào đầu (Dành cho Điện thoại)
+                -- Tắt Giữ chuột: Aim tự động khóa cứng luôn, không cần nhấn gì cả (Dành cho Điện thoại)
                 Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetHead.Position)
             end
         end
-        -- Trường hợp: Không có người chơi nào -> Không làm gì cả, camera giữ nguyên gốc tự do.
+        -- Trường hợp: Không có ai hoặc tất cả bị cản -> Không làm gì cả, camera giữ nguyên tự do.
     end
 
-    -- Giữ nguyên Kill Aura AOE
+    -- Hệ thống AOE Kill Aura Quét Toàn Bản Đồ cũ (Giữ nguyên)
     if KillAuraActive and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local myTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
@@ -303,7 +361,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =====================================================================
--- CÁC CHỨC NĂNG PHỤ TRỢ KHÁC (GIỮ NGUYÊN)
+-- HỆ THỐNG TỐI ƯU FPS & KÉO THẢ DI CHUYỂN MENU CŨ (GIỮ NGUYÊN)
 
 local function boostFPSSystem()
     OptimizeLevel = OptimizeLevel + 1
@@ -317,25 +375,6 @@ local function boostFPSSystem()
     end
     RightColumn.FpsBoostBtn.Text = "Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
-
-local function apply3DESP(character)
-    for _, v in ipairs(character:GetChildren()) do
-        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-            local oldEsp = v:FindFirstChild("3DESP_Box")
-            if oldEsp then oldEsp:Destroy() end
-            if HitboxEspActive then
-                local box = Instance.new("BoxHandleAdornment")
-                box.Name = "3DESP_Box"; box.Size = v.Size + Vector3.new(0.04, 0.04, 0.04); box.AlwaysOnTop = true; box.ZIndex = 5; box.Color3 = Color3.fromRGB(255, 255, 255); box.Transparency = 0.4; box.Adornee = v; box.Parent = v
-            end
-        end
-    end
-end
-
-local function updateAllESP()
-    for _, plr in ipairs(Players:GetPlayers()) do if plr ~= LocalPlayer and plr.Character then apply3DESP(plr.Character) end end
-end
-
-Players.PlayerAdded:Connect(function(plr) plr.CharacterAdded:Connect(function(char) task.wait(0.5) if HitboxEspActive then apply3DESP(char) end end) end)
 
 local dragging, dragInput, dragStart, startPos
 local function update(input)
@@ -380,33 +419,17 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
 end
 
 -- =====================================================================
--- PHÂN BỔ CÁC NÚT VÀ CÔNG TẮC LÊN GIAO DIỆN CHUẨN
+-- PHÂN BỔ THÀNH PHẦN LÊN GUI CHUẨN ĐÚNG PHẦN CHIA CỘT CỦA V24.8
 
--- --- CỘT TRÁI (THANH TRƯỢT GIỮ NGUYÊN) ---
+-- --- CỘT TRÁI (3 THANH TRƯỢT SLIDER) ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val) currentSpeed = val end)
 createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val) currentJump = val end)
 createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val) AimDistance = val end)
 
--- --- CỘT PHẢI (CÔNG TẮC GẠT MỚI GỌN GÀNG) ---
+-- --- CỘT PHẢI (NÚT FPS + HỆ THỐNG CÔNG TẮC GẠT TRÒN MỚI) ---
 local FpsBoostBtn = Instance.new("TextButton")
 FpsBoostBtn.Name = "FpsBoostBtn"; FpsBoostBtn.Size = UDim2.new(1, 0, 0, 22); FpsBoostBtn.Position = UDim2.new(0, 0, 0, 0)
 FpsBoostBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); FpsBoostBtn.Text = "Tối Ưu FPS: CLICK"
 FpsBoostBtn.TextColor3 = Color3.fromRGB(255, 255, 255); FpsBoostBtn.TextSize = 11; FpsBoostBtn.Font = Enum.Font.SourceSansBold; FpsBoostBtn.ZIndex = 2; FpsBoostBtn.Parent = RightColumn
 Instance.new("UICorner", FpsBoostBtn).CornerRadius = UDim.new(0, 5)
-table.insert(RainbowObjects, FpsBoostBtn)
-FpsBoostBtn.MouseButton1Click:Connect(boostFPSSystem)
-
--- Công tắc gạt tròn
-createToggleSwitch(RightColumn, "Mục tiêu AIM", 26, function(state) AimActive = state end)
-createToggleSwitch(RightColumn, "Giữ chuột (PC)", 52, function(state) AimHoldMouseActive = state end) -- Công tắc kiểm soát cơ chế giữ chuột bạn yêu cầu
-createToggleSwitch(RightColumn, "Khung Hộp 3D ESP", 78, function(state) HitboxEspActive = state updateAllESP() end)
-createToggleSwitch(RightColumn, "AOE Kill Toàn Bản Đồ", 104, function(state) KillAuraActive = state end)
-createToggleSwitch(RightColumn, "Tấm Đế Đỡ Chân", 130, function(state) PlatformActive = state end)
-createToggleSwitch(RightColumn, "Xoay nhân vật", 156, function(state)
-    SpinActive = state
-    local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
-        if oldSpin then oldSpin:Destroy() end
-        if SpinActive then
-            local spin = Instance.new("BodyAngular
+table.insert(RainbowO
