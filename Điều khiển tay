@@ -1,358 +1,192 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Điều khiển tay 1 khớp</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
-        body {
-            background: #111;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            touch-action: none;
-            overflow: hidden;
-        }
-        #container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            max-width: 500px;
-            max-height: 900px;
-            background: #1a1a1a;
-        }
-        /* Nút điều khiển */
-        .ctrl-btn {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 3px solid rgba(255,255,255,0.3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 14px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 0 0 10px rgba(0,0,0,0.7);
-            touch-action: none;
-            z-index: 10;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            transition: transform 0.05s;
-        }
-        #leftBtn {
-            left: 20px;
-            bottom: 40px;
-            background: radial-gradient(circle, #ff3333, #990000);
-            border-color: #ff6666;
-        }
-        #rightBtn {
-            right: 20px;
-            bottom: 40px;
-            background: radial-gradient(circle, #33cc33, #006600);
-            border-color: #66ff66;
-        }
-        .ctrl-btn:active {
-            transform: scale(0.92);
-        }
-        /* Vùng hiển thị cánh tay - dùng Canvas */
-        #armCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: block;
-            background: #1a1a1a;
-            touch-action: none;
-        }
-        /* Overlay hiển thị trạng thái */
-        #status {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 12px;
-            background: rgba(0,0,0,0.7);
-            padding: 6px 12px;
-            border-radius: 12px;
-            border: 1px solid #0f0;
-            z-index: 20;
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body>
-<div id="container">
-    <canvas id="armCanvas"></canvas>
-    <div id="status">🔴 TRÁI | XANH: PHẢI</div>
-    <div id="leftBtn" class="ctrl-btn">🔴 TRÁI</div>
-    <div id="rightBtn" class="ctrl-btn">🟢 PHẢI</div>
-</div>
+-- Script điều khiển tay nhân vật di chuyển theo nút bấm (kéo thả)
+-- Mỗi nút điều khiển 1 tay: giữ và kéo để di chuyển tay theo hướng kéo
 
-<script>
-    (function() {
-        // --- CẤU HÌNH CƠ BẢN ---
-        const canvas = document.getElementById('armCanvas');
-        const ctx = canvas.getContext('2d');
-        const leftBtn = document.getElementById('leftBtn');
-        const rightBtn = document.getElementById('rightBtn');
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-        // Kích thước thực tế
-        let W, H;
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
 
-        // Trạng thái cánh tay: mỗi tay là 1 đoạn thẳng (1 khớp)
-        // Gốc tay đặt tại vai: vai trái (x=0.2W, y=0.4H), vai phải (x=0.8W, y=0.4H)
-        // Mỗi tay có góc (rad) so với phương ngang (0 = hướng sang phải, dương = xuống dưới)
-        let leftAngle = -Math.PI / 2;   // hướng thẳng xuống ban đầu
-        let rightAngle = -Math.PI / 2;  // hướng thẳng xuống ban đầu
+-- Nút Trái (Đỏ) - kéo để di chuyển tay trái
+local LeftBtn = Instance.new("ImageButton")
+LeftBtn.Size = UDim2.new(0, 100, 0, 100)
+LeftBtn.Position = UDim2.new(0, 20, 1, -140)
+LeftBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+LeftBtn.Image = "rbxassetid://0"
+LeftBtn.Parent = ScreenGui
 
-        // Chiều dài cánh tay (tính theo % chiều rộng)
-        const ARM_LENGTH_RATIO = 0.32;
+-- Nút Phải (Xanh) - kéo để di chuyển tay phải
+local RightBtn = Instance.new("ImageButton")
+RightBtn.Size = UDim2.new(0, 100, 0, 100)
+RightBtn.Position = UDim2.new(1, -120, 1, -140)
+RightBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+RightBtn.Image = "rbxassetid://0"
+RightBtn.Parent = ScreenGui
 
-        // Tốc độ xoay (rad/ms) - điều chỉnh cho mượt
-        const SPEED = 0.0008; // ~ 0.8 rad/s khi touch
+-- Thêm nhãn
+local function addLabel(btn, text)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    label.TextScaled = true
+    label.Parent = btn
+end
+addLabel(LeftBtn, "KÉO TAY TRÁI")
+addLabel(RightBtn, "KÉO TAY PHẢI")
 
-        // Biến nhấn giữ
-        let leftPressed = false;
-        let rightPressed = false;
+-- Tạo cánh tay thật (gắn vào nhân vật) - sử dụng Motor6D để điều khiển
+local function getArmMotor(armName)
+    for _, child in pairs(Character:GetDescendants()) do
+        if child:IsA("Motor6D") and child.Name == armName then
+            return child
+        end
+    end
+    return nil
+end
 
-        // Hằng số điều khiển: 
-        // Nút trái: xoay ngược chiều kim đồng hồ (góc giảm) cho tay trái
-        // Nút phải: xoay cùng chiều kim đồng hồ (góc tăng) cho tay phải
-        // Để đảo chiều, ta dùng dấu âm.
+-- Lấy khớp tay trái và phải (Motor6D)
+local leftMotor = getArmMotor("Left Shoulder") or getArmMotor("Left Arm")
+local rightMotor = getArmMotor("Right Shoulder") or getArmMotor("Right Arm")
 
-        // --- HÀM RESIZE ---
-        function resize() {
-            const rect = document.getElementById('container').getBoundingClientRect();
-            W = rect.width;
-            H = rect.height;
-            canvas.width = W;
-            canvas.height = H;
-            draw();
-        }
-        window.addEventListener('resize', resize);
+-- Nếu không có Motor6D, tạo mới (cho Robloxian)
+if not leftMotor or not rightMotor then
+    -- Tạo tay giả nếu không có Motor (dành cho script test)
+    local function createDummyArm(side)
+        local arm = Instance.new("Part")
+        arm.Size = Vector3.new(0.8, 0.8, 2)
+        arm.BrickColor = BrickColor.new(side == "Left" and "Bright red" or "Bright green")
+        arm.Material = Enum.Material.SmoothPlastic
+        arm.Anchored = false
+        arm.CanCollide = false
+        arm.Parent = Character
+        
+        local weld = Instance.new("Weld")
+        weld.Part0 = RootPart
+        weld.Part1 = arm
+        weld.C0 = CFrame.new(side == "Left" and -1.5 or 1.5, 0.5, 0)
+        weld.Parent = arm
+        return weld, arm
+    end
+    local leftWeld, leftArm = createDummyArm("Left")
+    local rightWeld, rightArm = createDummyArm("Right")
+    leftMotor = leftWeld
+    rightMotor = rightWeld
+end
 
-        // --- HÀM VẼ CÁNH TAY (2 đoạn thẳng, mỗi tay 1 khớp) ---
-        function draw() {
-            ctx.clearRect(0, 0, W, H);
+-- Biến lưu vị trí kéo
+local leftDragStart = nil
+local rightDragStart = nil
+local leftOffset = Vector3.new(0, 0, 0)
+local rightOffset = Vector3.new(0, 0, 0)
 
-            const armLen = W * ARM_LENGTH_RATIO;
+-- Hàm cập nhật vị trí tay theo offset
+local function updateLeftArm(offset)
+    if leftMotor:IsA("Motor6D") then
+        leftMotor.C0 = CFrame.new(-1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
+    elseif leftMotor:IsA("Weld") then
+        leftMotor.C0 = CFrame.new(-1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
+    end
+end
 
-            // Vai trái (x, y)
-            const shoulderLX = W * 0.2;
-            const shoulderLY = H * 0.4;
-            // Vai phải
-            const shoulderRX = W * 0.8;
-            const shoulderRY = H * 0.4;
+local function updateRightArm(offset)
+    if rightMotor:IsA("Motor6D") then
+        rightMotor.C0 = CFrame.new(1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
+    elseif rightMotor:IsA("Weld") then
+        rightMotor.C0 = CFrame.new(1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
+    end
+end
 
-            // --- Tay trái ---
-            const endLX = shoulderLX + armLen * Math.cos(leftAngle);
-            const endLY = shoulderLY + armLen * Math.sin(leftAngle);
+-- Xử lý kéo cho nút trái
+LeftBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        leftDragStart = input.Position
+        -- Lưu offset hiện tại
+        local currentPos = leftMotor.C0.Position
+        leftOffset = Vector3.new(currentPos.X + 1.5, currentPos.Y - 0.5, currentPos.Z)
+    end
+end)
 
-            // --- Tay phải ---
-            const endRX = shoulderRX + armLen * Math.cos(rightAngle);
-            const endRY = shoulderRY + armLen * Math.sin(rightAngle);
+LeftBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if leftDragStart then
+            local delta = input.Position - leftDragStart
+            -- Tỉ lệ chuyển đổi: 1 pixel = 0.01 stud
+            local moveX = delta.X * 0.01
+            local moveY = -delta.Y * 0.01
+            local newOffset = leftOffset + Vector3.new(moveX, moveY, 0)
+            -- Giới hạn phạm vi di chuyển
+            newOffset = Vector3.new(
+                math.clamp(newOffset.X, -2, 2),
+                math.clamp(newOffset.Y, -1.5, 1.5),
+                math.clamp(newOffset.Z, -1, 1)
+            )
+            updateLeftArm(newOffset)
+        end
+    end
+end)
 
-            // Vẽ bóng mờ
-            ctx.shadowColor = 'rgba(0,200,255,0.3)';
-            ctx.shadowBlur = 20;
+LeftBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        leftDragStart = nil
+    end
+end)
 
-            // Vẽ thân (cánh tay) - nét đậm
-            ctx.lineWidth = 12;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
+-- Xử lý kéo cho nút phải
+RightBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        rightDragStart = input.Position
+        local currentPos = rightMotor.C0.Position
+        rightOffset = Vector3.new(currentPos.X - 1.5, currentPos.Y - 0.5, currentPos.Z)
+    end
+end)
 
-            // Tay trái - màu đỏ cam
-            ctx.shadowColor = 'rgba(255,0,0,0.5)';
-            ctx.strokeStyle = '#ff4444';
-            ctx.beginPath();
-            ctx.moveTo(shoulderLX, shoulderLY);
-            ctx.lineTo(endLX, endLY);
-            ctx.stroke();
+RightBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if rightDragStart then
+            local delta = input.Position - rightDragStart
+            local moveX = delta.X * 0.01
+            local moveY = -delta.Y * 0.01
+            local newOffset = rightOffset + Vector3.new(moveX, moveY, 0)
+            newOffset = Vector3.new(
+                math.clamp(newOffset.X, -2, 2),
+                math.clamp(newOffset.Y, -1.5, 1.5),
+                math.clamp(newOffset.Z, -1, 1)
+            )
+            updateRightArm(newOffset)
+        end
+    end
+end)
 
-            // Tay phải - màu xanh lá
-            ctx.shadowColor = 'rgba(0,255,0,0.5)';
-            ctx.strokeStyle = '#44ff44';
-            ctx.beginPath();
-            ctx.moveTo(shoulderRX, shoulderRY);
-            ctx.lineTo(endRX, endRY);
-            ctx.stroke();
+RightBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        rightDragStart = nil
+    end
+end)
 
-            // Vẽ khớp vai (hình tròn)
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = 'rgba(255,255,255,0.2)';
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(shoulderLX, shoulderLY, 10, 0, 2*Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(shoulderRX, shoulderRY, 10, 0, 2*Math.PI);
-            ctx.fill();
+-- Reset khi nhân vật respawn
+Player.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+    -- Cập nhật lại Motor
+    leftMotor = getArmMotor("Left Shoulder") or getArmMotor("Left Arm")
+    rightMotor = getArmMotor("Right Shoulder") or getArmMotor("Right Arm")
+    if not leftMotor or not rightMotor then
+        -- Tạo lại tay giả
+        local lw, la = createDummyArm("Left")
+        local rw, ra = createDummyArm("Right")
+        leftMotor = lw
+        rightMotor = rw
+    end
+    -- Reset về vị trí mặc định
+    updateLeftArm(Vector3.new(0, 0, 0))
+    updateRightArm(Vector3.new(0, 0, 0))
+end)
 
-            // Vẽ đầu ngón tay (chấm tròn)
-            ctx.shadowBlur = 25;
-            ctx.fillStyle = '#ffaa00';
-            ctx.beginPath();
-            ctx.arc(endLX, endLY, 8, 0, 2*Math.PI);
-            ctx.fill();
-            ctx.fillStyle = '#00ffaa';
-            ctx.beginPath();
-            ctx.arc(endRX, endRY, 8, 0, 2*Math.PI);
-            ctx.fill();
-
-            // Vẽ đường chỉ dẫn góc (nhỏ)
-            ctx.shadowBlur = 0;
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#888';
-            ctx.fillText('L: ' + (leftAngle * 180 / Math.PI).toFixed(1) + '°', 10, 30);
-            ctx.fillText('R: ' + (rightAngle * 180 / Math.PI).toFixed(1) + '°', W-90, 30);
-
-            // Reset shadow
-            ctx.shadowBlur = 0;
-        }
-
-        // --- CẬP NHẬT GÓC DỰA TRÊN TRẠNG THÁI NHẤN ---
-        function updateAngles() {
-            if (leftPressed) {
-                // Nút trái: xoay tay trái ngược chiều kim đồng hồ (góc giảm)
-                leftAngle -= SPEED * 16; // 16ms ~ 60fps
-                // Giới hạn góc để tránh xoay vòng (từ -PI đến 0 là vùng hoạt động thực tế)
-                if (leftAngle < -Math.PI) leftAngle = -Math.PI;
-                if (leftAngle > 0) leftAngle = 0;
-                // Mặc định giới hạn từ -180° đến 0° (hướng lên đến hướng sang phải)
-                // Nhưng để tự nhiên, ta cho phép từ -PI đến PI nhưng giới hạn mềm
-                // Ở đây giới hạn cứng để tránh lỗi visual
-                if (leftAngle < -Math.PI) leftAngle = -Math.PI;
-                if (leftAngle > Math.PI) leftAngle = Math.PI;
-            }
-            if (rightPressed) {
-                // Nút phải: xoay tay phải cùng chiều kim đồng hồ (góc tăng)
-                rightAngle += SPEED * 16;
-                if (rightAngle < -Math.PI) rightAngle = -Math.PI;
-                if (rightAngle > Math.PI) rightAngle = Math.PI;
-                // Giới hạn để tay phải chỉ xuống hoặc sang trái (từ -PI đến 0 là hướng xuống và sang trái)
-                // Nhưng để đối xứng, cho phép từ -PI đến PI
-            }
-            draw();
-        }
-
-        // --- VÒNG LẶP CHÍNH (requestAnimationFrame) ---
-        let lastTime = 0;
-        function loop(time) {
-            const delta = time - lastTime;
-            if (delta > 0) {
-                // Cập nhật nhiều bước nhỏ để mượt
-                const steps = Math.min(Math.floor(delta / 16), 5);
-                for (let i = 0; i < steps; i++) {
-                    updateAngles();
-                }
-                lastTime = time - (delta % 16);
-            } else {
-                lastTime = time;
-            }
-            requestAnimationFrame(loop);
-        }
-
-        // --- XỬ LÝ SỰ KIỆN CHẠM / CHUỘT ---
-        function handleTouchStart(btn, isLeft) {
-            return function(e) {
-                e.preventDefault();
-                if (isLeft) {
-                    leftPressed = true;
-                } else {
-                    rightPressed = true;
-                }
-                // Rung nhẹ (nếu hỗ trợ)
-                if (navigator.vibrate) navigator.vibrate(10);
-            };
-        }
-
-        function handleTouchEnd(btn, isLeft) {
-            return function(e) {
-                e.preventDefault();
-                if (isLeft) {
-                    leftPressed = false;
-                } else {
-                    rightPressed = false;
-                }
-            };
-        }
-
-        function handleTouchCancel(btn, isLeft) {
-            return function(e) {
-                e.preventDefault();
-                if (isLeft) {
-                    leftPressed = false;
-                } else {
-                    rightPressed = false;
-                }
-            };
-        }
-
-        // Gán sự kiện cho nút trái
-        leftBtn.addEventListener('touchstart', handleTouchStart(leftBtn, true), { passive: false });
-        leftBtn.addEventListener('touchend', handleTouchEnd(leftBtn, true), { passive: false });
-        leftBtn.addEventListener('touchcancel', handleTouchCancel(leftBtn, true), { passive: false });
-        // Chuột (cho debug trên PC)
-        leftBtn.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            leftPressed = true;
-        });
-        leftBtn.addEventListener('mouseup', function(e) {
-            e.preventDefault();
-            leftPressed = false;
-        });
-        leftBtn.addEventListener('mouseleave', function(e) {
-            leftPressed = false;
-        });
-
-        // Gán sự kiện cho nút phải
-        rightBtn.addEventListener('touchstart', handleTouchStart(rightBtn, false), { passive: false });
-        rightBtn.addEventListener('touchend', handleTouchEnd(rightBtn, false), { passive: false });
-        rightBtn.addEventListener('touchcancel', handleTouchCancel(rightBtn, false), { passive: false });
-        rightBtn.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            rightPressed = true;
-        });
-        rightBtn.addEventListener('mouseup', function(e) {
-            e.preventDefault();
-            rightPressed = false;
-        });
-        rightBtn.addEventListener('mouseleave', function(e) {
-            rightPressed = false;
-        });
-
-        // Ngăn cuộn / kéo toàn màn hình
-        document.addEventListener('touchmove', function(e) {
-            if (e.target === canvas || e.target === leftBtn || e.target === rightBtn) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        // --- KHỞI TẠO ---
-        resize();
-        lastTime = performance.now();
-        requestAnimationFrame(loop);
-
-        // Reset góc về thẳng đứng khi khởi động lại
-        leftAngle = -Math.PI / 2;
-        rightAngle = -Math.PI / 2;
-        draw();
-
-        // Xử lý resize lại khi xoay màn hình
-        window.addEventListener('orientationchange', function() {
-            setTimeout(resize, 300);
-        });
-
-        console.log('Script hack tay 1 khớp đã sẵn sàng.');
-        console.log('Nhấn giữ nút đỏ (trái) -> tay trái xoay lên.');
-        console.log('Nhấn giữ nút xanh (phải) -> tay phải xoay lên.');
-        console.log('Thả ra -> tay giữ nguyên vị trí.');
-    })();
-</script>
-</body>
-</html>
+print("Script kéo thả tay đã chạy. Kéo nút Đỏ để di chuyển tay trái, kéo nút Xanh để di chuyển tay phải.")
