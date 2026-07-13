@@ -1,127 +1,67 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Xóa Menu cũ nếu có để tránh trùng lặp khi test nhiều lần
-local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("Script_Test_Image_Menu")
-if oldGui then oldGui:Destroy() end
+-- 1. TẠO KHUNG GIAO DIỆN TEST
+local TestGui = Instance.new("ScreenGui")
+TestGui.Name = "Roblox_Image_Test_Script"
+TestGui.ResetOnSpawn = false
+TestGui.IgnoreGuiInset = true
+TestGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- 1. KHỞI TẠO KHUNG CHỨA GIAO DIỆN TEST
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "Script_Test_Image_Menu"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+local TestFrame = Instance.new("Frame")
+TestFrame.Name = "TestFrame"
+TestFrame.Size = UDim2.new(0, 300, 0, 300)
+TestFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
+TestFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TestFrame.Active = true
+TestFrame.Draggable = true -- Bạn có thể di chuyển bảng này trên màn hình
+TestFrame.Parent = TestGui
 
--- 2. KHUNG CHÍNH (Hiển thị ID 134759374241732 làm nền)
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 430, 0, 250) 
-MainFrame.Position = UDim2.new(0.5, -215, 0.5, -125)
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Nền đen dự phòng nếu ảnh lỗi
-MainFrame.Active = true
-MainFrame.Parent = ScreenGui
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = MainFrame
-
--- Ảnh Nền (ID 134759374241732)
-local BgImage = Instance.new("ImageLabel")
-BgImage.Name = "BgImage"
-BgImage.Size = UDim2.new(1, 0, 1, 0)
-BgImage.BackgroundTransparency = 1
-BgImage.Image = "rbxassetid://134759374241732"
-BgImage.ScaleType = Enum.ScaleType.Crop
-BgImage.ZIndex = 1
-BgImage.Parent = MainFrame
-
-local BgCorner = Instance.new("UICorner")
-BgCorner.CornerRadius = UDim.new(0, 12)
-BgCorner.Parent = BgImage
-
--- Tiêu đề Text hiển thị thông tin
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Position = UDim2.new(0, 0, 0, 5)
-Title.Text = "[ SCRIPT TEST HÌNH ẢNH ]"
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "HỘP TEST HIỂN THỊ ẢNH"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
-Title.BackgroundTransparency = 1
-Title.ZIndex = 2
-Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.Parent = TestFrame
 
--- 3. KHUNG HIỂN THỊ ID 130963996438547 (Nằm bên trái)
-local TestImage1 = Instance.new("ImageLabel")
-TestImage1.Name = "TestImage1"
-TestImage1.Size = UDim2.new(0, 100, 0, 100)
-TestImage1.Position = UDim2.new(0, 40, 0, 50)
-TestImage1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TestImage1.Image = "rbxassetid://130963996438547"
-TestImage1.ZIndex = 2
-TestImage1.Parent = MainFrame
+-- 2. KHUNG HIỂN THỊ ẢNH CHÍNH (SỬ DỤNG ID BẠN CUNG CẤP)
+local ImageDisplay = Instance.new("ImageLabel")
+ImageDisplay.Name = "ImageDisplay"
+ImageDisplay.Size = UDim2.new(0, 200, 0, 200)
+ImageDisplay.Position = UDim2.new(0.5, -100, 0.5, -80)
+ImageDisplay.ScaleType = Enum.ScaleType.Fit
+ImageDisplay.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Nền đen mặc định của khung
+ImageDisplay.Parent = TestFrame
 
-local Label1 = Instance.new("TextLabel")
-Label1.Size = UDim2.new(0, 100, 0, 20)
-Label1.Position = UDim2.new(0, 40, 0, 155)
-Label1.Text = "ID: ...38547"
-Label1.TextColor3 = Color3.fromRGB(255, 255, 255)
-Label1.TextSize = 12
-Label1.BackgroundTransparency = 1
-Label1.ZIndex = 2
-Label1.Parent = MainFrame
+-- Thử định dạng chuẩn mã Asset ID của Roblox bằng ID mới của bạn
+ImageDisplay.Image = "rbxassetid://115467504724680"
 
--- 4. KHUNG HIỂN THỊ ID 92781042692285 (Nằm bên phải)
-local TestImage2 = Instance.new("ImageLabel")
-TestImage2.Name = "TestImage2"
-TestImage2.Size = UDim2.new(0, 100, 0, 100)
-TestImage2.Position = UDim2.new(1, -140, 0, 50)
-TestImage2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TestImage2.Image = "rbxassetid://92781042692285"
-TestImage2.ZIndex = 2
-TestImage2.Parent = MainFrame
+-- 3. NÚT ĐỂ ĐỔI SANG CÁC KIỂU ĐỊNH DẠNG KHÁC NẾU BỊ ĐEN
+local FormatButton = Instance.new("TextButton")
+FormatButton.Size = UDim2.new(0, 260, 0, 35)
+FormatButton.Position = UDim2.new(0.5, -130, 1, -45)
+FormatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+FormatButton.Text = "Đang thử: rbxassetid://"
+FormatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FormatButton.TextSize = 14
+FormatButton.Font = Enum.Font.SourceSansBold
+FormatButton.Parent = TestFrame
 
-local Label2 = Instance.new("TextLabel")
-Label2.Size = UDim2.new(0, 100, 0, 20)
-Label2.Position = UDim2.new(1, -140, 0, 155)
-Label2.Text = "ID: ...2285"
-Label2.TextColor3 = Color3.fromRGB(255, 255, 255)
-Label2.TextSize = 12
-Label2.BackgroundTransparency = 1
-Label2.ZIndex = 2
-Label2.Parent = MainFrame
-
--- Nút bấm đóng Test Menu nhanh
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 120, 0, 30)
-CloseBtn.Position = UDim2.new(0.5, -60, 1, -45)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
-CloseBtn.Text = "Tắt Test Menu"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 14
-CloseBtn.ZIndex = 3
-CloseBtn.Parent = MainFrame
-
-local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(0, 6)
-BtnCorner.Parent = CloseBtn
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- Hỗ trợ kéo menu di chuyển trên màn hình để kiểm tra độ mượt
-local dragging, dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+local currentFormat = 1
+FormatButton.MouseButton1Click:Connect(function()
+    currentFormat = currentFormat + 1
+    if currentFormat > 3 then currentFormat = 1 end
+    
+    if currentFormat == 1 then
+        ImageDisplay.Image = "rbxassetid://115467504724680"
+        FormatButton.Text = "Đang thử: rbxassetid://"
+    elseif currentFormat == 2 then
+        ImageDisplay.Image = "http://www.roblox.com/asset/?id=115467504724680"
+        FormatButton.Text = "Đang thử: Định dạng HTTP gốc"
+    elseif currentFormat == 3 then
+        ImageDisplay.Image = "rbxthumb://type=Asset&id=115467504724680&w=420&h=420"
+        FormatButton.Text = "Đang thử: Định dạng rbxthumb"
     end
 end)
-MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
-game:GetService("UserInputService").InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
