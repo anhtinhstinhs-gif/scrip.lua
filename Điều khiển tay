@@ -1,121 +1,358 @@
-import pygame
-import sys
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Điều khiển tay 1 khớp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
+        body {
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            touch-action: none;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px;
+            max-height: 900px;
+            background: #1a1a1a;
+        }
+        /* Nút điều khiển */
+        .ctrl-btn {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0,0,0,0.7);
+            touch-action: none;
+            z-index: 10;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            transition: transform 0.05s;
+        }
+        #leftBtn {
+            left: 20px;
+            bottom: 40px;
+            background: radial-gradient(circle, #ff3333, #990000);
+            border-color: #ff6666;
+        }
+        #rightBtn {
+            right: 20px;
+            bottom: 40px;
+            background: radial-gradient(circle, #33cc33, #006600);
+            border-color: #66ff66;
+        }
+        .ctrl-btn:active {
+            transform: scale(0.92);
+        }
+        /* Vùng hiển thị cánh tay - dùng Canvas */
+        #armCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #1a1a1a;
+            touch-action: none;
+        }
+        /* Overlay hiển thị trạng thái */
+        #status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 12px;
+            border-radius: 12px;
+            border: 1px solid #0f0;
+            z-index: 20;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <canvas id="armCanvas"></canvas>
+    <div id="status">🔴 TRÁI | XANH: PHẢI</div>
+    <div id="leftBtn" class="ctrl-btn">🔴 TRÁI</div>
+    <div id="rightBtn" class="ctrl-btn">🟢 PHẢI</div>
+</div>
 
-# Khởi tạo
-pygame.init()
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Điều khiển cánh tay ảo - 2 nút")
-clock = pygame.time.Clock()
+<script>
+    (function() {
+        // --- CẤU HÌNH CƠ BẢN ---
+        const canvas = document.getElementById('armCanvas');
+        const ctx = canvas.getContext('2d');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
 
-# Màu sắc
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GRAY = (200, 200, 200)
+        // Kích thước thực tế
+        let W, H;
 
-# Vị trí cánh tay (gốc cố định)
-BASE_X, BASE_Y = WIDTH // 2, HEIGHT // 2 + 50
-ARM_LENGTH = 150
+        // Trạng thái cánh tay: mỗi tay là 1 đoạn thẳng (1 khớp)
+        // Gốc tay đặt tại vai: vai trái (x=0.2W, y=0.4H), vai phải (x=0.8W, y=0.4H)
+        // Mỗi tay có góc (rad) so với phương ngang (0 = hướng sang phải, dương = xuống dưới)
+        let leftAngle = -Math.PI / 2;   // hướng thẳng xuống ban đầu
+        let rightAngle = -Math.PI / 2;  // hướng thẳng xuống ban đầu
 
-# Góc của từng cánh tay (radian)
-left_angle = -0.5   # tay trái
-right_angle = 0.5   # tay phải
+        // Chiều dài cánh tay (tính theo % chiều rộng)
+        const ARM_LENGTH_RATIO = 0.32;
 
-# Kích thước nút
-BUTTON_SIZE = 80
-LEFT_BUTTON_X = 50
-RIGHT_BUTTON_X = WIDTH - 50 - BUTTON_SIZE
-BUTTON_Y = HEIGHT - 100
+        // Tốc độ xoay (rad/ms) - điều chỉnh cho mượt
+        const SPEED = 0.0008; // ~ 0.8 rad/s khi touch
 
-# Trạng thái kéo
-dragging_left = False
-dragging_right = False
-drag_offset_x = 0
-drag_offset_y = 0
+        // Biến nhấn giữ
+        let leftPressed = false;
+        let rightPressed = false;
 
-def draw_arm(angle, color, flip=False):
-    """Vẽ một cánh tay đơn giản (1 khớp)"""
-    end_x = BASE_X + ARM_LENGTH * pygame.math.Vector2(1, 0).rotate(-angle * 180 / 3.14159).x
-    end_y = BASE_Y + ARM_LENGTH * pygame.math.Vector2(1, 0).rotate(-angle * 180 / 3.14159).y
-    if flip:
-        end_x = BASE_X - (end_x - BASE_X)
-    pygame.draw.line(screen, color, (BASE_X, BASE_Y), (end_x, end_y), 12)
-    pygame.draw.circle(screen, color, (int(end_x), int(end_y)), 15)
-    pygame.draw.circle(screen, BLACK, (BASE_X, BASE_Y), 10)
+        // Hằng số điều khiển: 
+        // Nút trái: xoay ngược chiều kim đồng hồ (góc giảm) cho tay trái
+        // Nút phải: xoay cùng chiều kim đồng hồ (góc tăng) cho tay phải
+        // Để đảo chiều, ta dùng dấu âm.
 
-def draw_button(x, y, color, label):
-    """Vẽ nút tròn"""
-    pygame.draw.circle(screen, color, (x + BUTTON_SIZE//2, y + BUTTON_SIZE//2), BUTTON_SIZE//2)
-    pygame.draw.circle(screen, BLACK, (x + BUTTON_SIZE//2, y + BUTTON_SIZE//2), BUTTON_SIZE//2, 3)
-    font = pygame.font.Font(None, 30)
-    text = font.render(label, True, WHITE)
-    screen.blit(text, (x + BUTTON_SIZE//2 - text.get_width()//2, y + BUTTON_SIZE//2 - text.get_height()//2))
+        // --- HÀM RESIZE ---
+        function resize() {
+            const rect = document.getElementById('container').getBoundingClientRect();
+            W = rect.width;
+            H = rect.height;
+            canvas.width = W;
+            canvas.height = H;
+            draw();
+        }
+        window.addEventListener('resize', resize);
 
-# Vòng lặp chính
-running = True
-while running:
-    screen.fill(WHITE)
-    
-    # Vẽ cánh tay
-    draw_arm(left_angle, RED, flip=False)   # tay trái (màu đỏ)
-    draw_arm(right_angle, BLUE, flip=True)  # tay phải (màu xanh)
-    
-    # Vẽ nút bấm
-    draw_button(LEFT_BUTTON_X, BUTTON_Y, RED, "TRÁI")
-    draw_button(RIGHT_BUTTON_X, BUTTON_Y, BLUE, "PHẢI")
-    
-    # Xử lý sự kiện
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            mx, my = event.pos
-            # Kiểm tra nút trái
-            if (mx - LEFT_BUTTON_X - BUTTON_SIZE//2)**2 + (my - BUTTON_Y - BUTTON_SIZE//2)**2 <= (BUTTON_SIZE//2)**2:
-                dragging_left = True
-                drag_offset_x = mx - LEFT_BUTTON_X
-                drag_offset_y = my - BUTTON_Y
-            # Kiểm tra nút phải
-            elif (mx - RIGHT_BUTTON_X - BUTTON_SIZE//2)**2 + (my - BUTTON_Y - BUTTON_SIZE//2)**2 <= (BUTTON_SIZE//2)**2:
-                dragging_right = True
-                drag_offset_x = mx - RIGHT_BUTTON_X
-                drag_offset_y = my - BUTTON_Y
-        
-        elif event.type == pygame.MOUSEBUTTONUP:
-            dragging_left = False
-            dragging_right = False
-        
-        elif event.type == pygame.MOUSEMOTION:
-            mx, my = event.pos
-            if dragging_left:
-                # Di chuyển nút trái (kéo theo chuột)
-                new_x = mx - drag_offset_x
-                new_y = my - drag_offset_y
-                # Giới hạn trong màn hình
-                new_x = max(0, min(WIDTH - BUTTON_SIZE, new_x))
-                new_y = max(0, min(HEIGHT - BUTTON_SIZE, new_y))
-                LEFT_BUTTON_X, BUTTON_Y = new_x, new_y
-                # Cập nhật góc tay trái theo vị trí nút
-                left_angle = -((LEFT_BUTTON_X / WIDTH) * 2 - 1) * 0.8
-            if dragging_right:
-                new_x = mx - drag_offset_x
-                new_y = my - drag_offset_y
-                new_x = max(0, min(WIDTH - BUTTON_SIZE, new_x))
-                new_y = max(0, min(HEIGHT - BUTTON_SIZE, new_y))
-                RIGHT_BUTTON_X, BUTTON_Y = new_x, new_y
-                right_angle = ((RIGHT_BUTTON_X / WIDTH) * 2 - 1) * 0.8
-    
-    # Hiển thị trạng thái
-    font = pygame.font.Font(None, 24)
-    status = f"Trái: {round(left_angle,2)} rad | Phải: {round(right_angle,2)} rad"
-    screen.blit(font.render(status, True, BLACK), (10, 10))
-    
-    pygame.display.flip()
-    clock.tick(60)
+        // --- HÀM VẼ CÁNH TAY (2 đoạn thẳng, mỗi tay 1 khớp) ---
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
 
-pygame.quit()
-sys.exit()
+            const armLen = W * ARM_LENGTH_RATIO;
+
+            // Vai trái (x, y)
+            const shoulderLX = W * 0.2;
+            const shoulderLY = H * 0.4;
+            // Vai phải
+            const shoulderRX = W * 0.8;
+            const shoulderRY = H * 0.4;
+
+            // --- Tay trái ---
+            const endLX = shoulderLX + armLen * Math.cos(leftAngle);
+            const endLY = shoulderLY + armLen * Math.sin(leftAngle);
+
+            // --- Tay phải ---
+            const endRX = shoulderRX + armLen * Math.cos(rightAngle);
+            const endRY = shoulderRY + armLen * Math.sin(rightAngle);
+
+            // Vẽ bóng mờ
+            ctx.shadowColor = 'rgba(0,200,255,0.3)';
+            ctx.shadowBlur = 20;
+
+            // Vẽ thân (cánh tay) - nét đậm
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Tay trái - màu đỏ cam
+            ctx.shadowColor = 'rgba(255,0,0,0.5)';
+            ctx.strokeStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.moveTo(shoulderLX, shoulderLY);
+            ctx.lineTo(endLX, endLY);
+            ctx.stroke();
+
+            // Tay phải - màu xanh lá
+            ctx.shadowColor = 'rgba(0,255,0,0.5)';
+            ctx.strokeStyle = '#44ff44';
+            ctx.beginPath();
+            ctx.moveTo(shoulderRX, shoulderRY);
+            ctx.lineTo(endRX, endRY);
+            ctx.stroke();
+
+            // Vẽ khớp vai (hình tròn)
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = 'rgba(255,255,255,0.2)';
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(shoulderLX, shoulderLY, 10, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(shoulderRX, shoulderRY, 10, 0, 2*Math.PI);
+            ctx.fill();
+
+            // Vẽ đầu ngón tay (chấm tròn)
+            ctx.shadowBlur = 25;
+            ctx.fillStyle = '#ffaa00';
+            ctx.beginPath();
+            ctx.arc(endLX, endLY, 8, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#00ffaa';
+            ctx.beginPath();
+            ctx.arc(endRX, endRY, 8, 0, 2*Math.PI);
+            ctx.fill();
+
+            // Vẽ đường chỉ dẫn góc (nhỏ)
+            ctx.shadowBlur = 0;
+            ctx.font = '12px monospace';
+            ctx.fillStyle = '#888';
+            ctx.fillText('L: ' + (leftAngle * 180 / Math.PI).toFixed(1) + '°', 10, 30);
+            ctx.fillText('R: ' + (rightAngle * 180 / Math.PI).toFixed(1) + '°', W-90, 30);
+
+            // Reset shadow
+            ctx.shadowBlur = 0;
+        }
+
+        // --- CẬP NHẬT GÓC DỰA TRÊN TRẠNG THÁI NHẤN ---
+        function updateAngles() {
+            if (leftPressed) {
+                // Nút trái: xoay tay trái ngược chiều kim đồng hồ (góc giảm)
+                leftAngle -= SPEED * 16; // 16ms ~ 60fps
+                // Giới hạn góc để tránh xoay vòng (từ -PI đến 0 là vùng hoạt động thực tế)
+                if (leftAngle < -Math.PI) leftAngle = -Math.PI;
+                if (leftAngle > 0) leftAngle = 0;
+                // Mặc định giới hạn từ -180° đến 0° (hướng lên đến hướng sang phải)
+                // Nhưng để tự nhiên, ta cho phép từ -PI đến PI nhưng giới hạn mềm
+                // Ở đây giới hạn cứng để tránh lỗi visual
+                if (leftAngle < -Math.PI) leftAngle = -Math.PI;
+                if (leftAngle > Math.PI) leftAngle = Math.PI;
+            }
+            if (rightPressed) {
+                // Nút phải: xoay tay phải cùng chiều kim đồng hồ (góc tăng)
+                rightAngle += SPEED * 16;
+                if (rightAngle < -Math.PI) rightAngle = -Math.PI;
+                if (rightAngle > Math.PI) rightAngle = Math.PI;
+                // Giới hạn để tay phải chỉ xuống hoặc sang trái (từ -PI đến 0 là hướng xuống và sang trái)
+                // Nhưng để đối xứng, cho phép từ -PI đến PI
+            }
+            draw();
+        }
+
+        // --- VÒNG LẶP CHÍNH (requestAnimationFrame) ---
+        let lastTime = 0;
+        function loop(time) {
+            const delta = time - lastTime;
+            if (delta > 0) {
+                // Cập nhật nhiều bước nhỏ để mượt
+                const steps = Math.min(Math.floor(delta / 16), 5);
+                for (let i = 0; i < steps; i++) {
+                    updateAngles();
+                }
+                lastTime = time - (delta % 16);
+            } else {
+                lastTime = time;
+            }
+            requestAnimationFrame(loop);
+        }
+
+        // --- XỬ LÝ SỰ KIỆN CHẠM / CHUỘT ---
+        function handleTouchStart(btn, isLeft) {
+            return function(e) {
+                e.preventDefault();
+                if (isLeft) {
+                    leftPressed = true;
+                } else {
+                    rightPressed = true;
+                }
+                // Rung nhẹ (nếu hỗ trợ)
+                if (navigator.vibrate) navigator.vibrate(10);
+            };
+        }
+
+        function handleTouchEnd(btn, isLeft) {
+            return function(e) {
+                e.preventDefault();
+                if (isLeft) {
+                    leftPressed = false;
+                } else {
+                    rightPressed = false;
+                }
+            };
+        }
+
+        function handleTouchCancel(btn, isLeft) {
+            return function(e) {
+                e.preventDefault();
+                if (isLeft) {
+                    leftPressed = false;
+                } else {
+                    rightPressed = false;
+                }
+            };
+        }
+
+        // Gán sự kiện cho nút trái
+        leftBtn.addEventListener('touchstart', handleTouchStart(leftBtn, true), { passive: false });
+        leftBtn.addEventListener('touchend', handleTouchEnd(leftBtn, true), { passive: false });
+        leftBtn.addEventListener('touchcancel', handleTouchCancel(leftBtn, true), { passive: false });
+        // Chuột (cho debug trên PC)
+        leftBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            leftPressed = true;
+        });
+        leftBtn.addEventListener('mouseup', function(e) {
+            e.preventDefault();
+            leftPressed = false;
+        });
+        leftBtn.addEventListener('mouseleave', function(e) {
+            leftPressed = false;
+        });
+
+        // Gán sự kiện cho nút phải
+        rightBtn.addEventListener('touchstart', handleTouchStart(rightBtn, false), { passive: false });
+        rightBtn.addEventListener('touchend', handleTouchEnd(rightBtn, false), { passive: false });
+        rightBtn.addEventListener('touchcancel', handleTouchCancel(rightBtn, false), { passive: false });
+        rightBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            rightPressed = true;
+        });
+        rightBtn.addEventListener('mouseup', function(e) {
+            e.preventDefault();
+            rightPressed = false;
+        });
+        rightBtn.addEventListener('mouseleave', function(e) {
+            rightPressed = false;
+        });
+
+        // Ngăn cuộn / kéo toàn màn hình
+        document.addEventListener('touchmove', function(e) {
+            if (e.target === canvas || e.target === leftBtn || e.target === rightBtn) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // --- KHỞI TẠO ---
+        resize();
+        lastTime = performance.now();
+        requestAnimationFrame(loop);
+
+        // Reset góc về thẳng đứng khi khởi động lại
+        leftAngle = -Math.PI / 2;
+        rightAngle = -Math.PI / 2;
+        draw();
+
+        // Xử lý resize lại khi xoay màn hình
+        window.addEventListener('orientationchange', function() {
+            setTimeout(resize, 300);
+        });
+
+        console.log('Script hack tay 1 khớp đã sẵn sàng.');
+        console.log('Nhấn giữ nút đỏ (trái) -> tay trái xoay lên.');
+        console.log('Nhấn giữ nút xanh (phải) -> tay phải xoay lên.');
+        console.log('Thả ra -> tay giữ nguyên vị trí.');
+    })();
+</script>
+</body>
+</html>
