@@ -1,6 +1,3 @@
--- Chờ 1 giây để đảm bảo game tải ổn định trước khi tạo giao diện
-task.wait(1)
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
