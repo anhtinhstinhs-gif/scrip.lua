@@ -1,10 +1,3 @@
--- palofsc (palo) 
--- Phân tích yêu cầu: 
--- Thiết lập 3 trạng thái cho Aim tự động (AimActive) dựa trên chế độ giữ chuột trái:
--- 1. Công tắc BẬT, Chế độ giữ chuột TẮT -> Aim tự động vào đầu người chơi gần nhất (không cần bấm gì) -> Dành cho điện thoại
--- 2. Công tắc BẬT, Chế độ giữ chuột BẬT -> Chỉ aim khi giữ chuột trái -> Dành cho PC
--- 3. Công tắc TẮT -> Không aim
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -13,11 +6,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-
--- Biến cấu hình trạng thái mới
-local AimActive = false            -- Trạng thái Công tắc Aim chính (ON/OFF)
-local AimHoldMouseActive = false   -- Trạng thái Chế độ giữ chuột (ON/OFF)
-local IsMouseDown = false          -- Kiểm tra chuột trái đang được nhấn hay không
 
 -- 1. KHỞI TẠO GIAO DIỆN MENU V24.8.1 (NÂNGCẤP NÚT GẠT)
 local ScreenGui = Instance.new("ScreenGui")
@@ -44,12 +32,16 @@ OpenCorner.Parent = OpenButton
 -- KHUNG MENU CHÍNH (GIỮ NGUYÊN ĐỘ TRONG SUỐT V24.8)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 275) -- Tăng chiều cao lên 275 để chứa thêm công tắc mới
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -137.5)
+MainFrame.Size = UDim2.new(0, 450, 0, 250) 
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.BackgroundTransparency = 0.95
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
 
 -- HÌNH NỀN MENU V24.8 (HIỂN THỊ SÁNG RÕ FULL ĐẦU)
 local BackgroundImage = Instance.new("ImageLabel")
@@ -63,10 +55,6 @@ BackgroundImage.Parent = MainFrame
 local BGCorner = Instance.new("UICorner")
 BGCorner.CornerRadius = UDim.new(0, 12)
 BGCorner.Parent = BackgroundImage
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 12)
-MainCorner.Parent = MainFrame
 
 -- TIÊU ĐỀ MENU
 local Title = Instance.new("TextLabel")
@@ -93,7 +81,7 @@ MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.ZIndex = 2
 MinimizeButton.Parent = MainFrame
 
--- BỐ CỤC HAI CỘT
+-- BỐ CỤC HAI CỘT (GIỮ NGUYÊN ĐỘ RỘNG THU GỌN CỦA V24.8)
 local LeftColumn = Instance.new("Frame", MainFrame)
 LeftColumn.Size = UDim2.new(0.45, -10, 1, -45)
 LeftColumn.Position = UDim2.new(0, 10, 0, 40)
@@ -101,7 +89,7 @@ LeftColumn.BackgroundTransparency = 1
 LeftColumn.ZIndex = 2
 
 local RightColumn = Instance.new("Frame", MainFrame)
-RightColumn.Size = UDim2.new(0.42, -10, 1, -45)
+RightColumn.Size = UDim2.new(0.42, -10, 1, -45) -- Điều chỉnh nhẹ để vừa nút gạt mới
 RightColumn.Position = UDim2.new(1, -190, 0, 40)
 RightColumn.BackgroundTransparency = 1
 RightColumn.ZIndex = 2
@@ -109,10 +97,11 @@ RightColumn.ZIndex = 2
 local RainbowObjects = {} 
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (GIỮ NGUYÊN)
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
+local AimActive = false
 local PlatformActive = false 
 
 local OptimizeLevel = 0 
@@ -122,21 +111,8 @@ local AimDistance = 150
 
 if setfpscap then setfpscap(999) end
 
--- Theo dõi sự kiện click chuột trái trên PC
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
-        IsMouseDown = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        IsMouseDown = false
-    end
-end)
-
 -- =====================================================================
--- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN (SWITCH UI)
+-- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN (SWITCH UI) Y HỆT ẢNH MẪU
 local function createToggleSwitch(parentCol, text, yOffset, callback)
     local Container = Instance.new("Frame")
     Container.Size = UDim2.new(1, 0, 0, 24)
@@ -286,9 +262,9 @@ local function getClosestPlayer()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local myPos = LocalPlayer.Character.HumanoidRootPart.Position
         for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
-                local dist = (plr.Character.Head.Position - myPos).Magnitude
-                if dist < maxDist then maxDist = dist; closestTarget = plr.Character.Head end
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                local dist = (plr.Character.HumanoidRootPart.Position - myPos).Magnitude
+                if dist < maxDist then maxDist = dist; closestTarget = plr.Character.HumanoidRootPart end
             end
         end
     end
@@ -309,19 +285,8 @@ RunService.RenderStepped:Connect(function()
 
     updatePlatform()
 
-    -- Thực thi logic Aim tự động và Giữ chuột trái
-    if AimActive then
-        local target = getClosestPlayer()
-        if target then
-            if not AimHoldMouseActive then
-                -- BẬT - TẮT: Auto aim không cần nhấn chuột (điện thoại)
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-            elseif AimHoldMouseActive and IsMouseDown then
-                -- BẬT - BẬT: Chỉ aim khi nhấn giữ chuột trái (PC)
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
-            end
-        end
-    end
+    local target = getClosestPlayer()
+    if AimActive and target then Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position) end
 
     if KillAuraActive and LocalPlayer.Character then
         local myHrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -431,6 +396,17 @@ createToggleSwitch(RightColumn, "Xoay nhân vật", 30, function(state)
 end)
 
 createToggleSwitch(RightColumn, "Khung Hộp 3D ESP", 60, function(state) HitboxEspActive = state updateAllESP() end)
+createToggleSwitch(RightColumn, "Mục tiêu AIM", 90, function(state) AimActive = state end)
+createToggleSwitch(RightColumn, "AOE Kill Toàn Bản Đồ", 120, function(state) KillAuraActive = state end)
+createToggleSwitch(RightColumn, "Tấm Đế Đỡ Chân", 150, function(state) PlatformActive = state end)
 
--- Công tắc Aim chính (Quyết định xem có thực hiện cơ chế Lock hay không)
-createToggleSwitch(RightColumn, "Mục tiêu AIM", 
+-- HIỆU ỨNG CẦU VỒNG ĐỔI MÀU THANH TRƯỢT VÀ NÚT FPS BOOST GỐC
+local hue = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+    hue = (hue + (deltaTime * 0.1)) % 1
+    GlobalRainbowColor = Color3.fromHSV(hue, 1, 1)
+    for _, object in ipairs(RainbowObjects) do if object and object:IsA("GuiObject") then object.BackgroundColor3 = GlobalRainbowColor end end
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
+OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
