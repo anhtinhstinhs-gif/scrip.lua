@@ -1,192 +1,201 @@
--- Script điều khiển tay nhân vật di chuyển theo nút bấm (kéo thả)
--- Mỗi nút điều khiển 1 tay: giữ và kéo để di chuyển tay theo hướng kéo
+-- Roblox Head Aimlock Script (Universal)
+-- Hỗ trợ Menu kéo thả, thu nhỏ/mở rộng, hỗ trợ Mobile và PC
 
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- Tạo GUI
+-- Trạng thái cấu hình
+local AimBotEnabled = false
+local HoldToAim = false
+local IsAiming = false
+
+-- Hàm tìm người chơi gần nhất với tâm màn hình
+local function GetClosestPlayer()
+    local ClosestPlayer = nil
+    local ShortestDistance = math.huge
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Head") and Player.Character:FindFirstChildOfClass("Humanoid") then
+            if Player.Character.Humanoid.Health > 0 then
+                local Head = Player.Character.Head
+                local ScreenPosition, OnScreen = Camera:WorldToViewportPoint(Head.Position)
+
+                if OnScreen then
+                    local MousePosition = UserInputService:GetMouseLocation()
+                    local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MousePosition).Magnitude
+
+                    if Distance < ShortestDistance then
+                        ClosestPlayer = Player
+                        ShortestDistance = Distance
+                    end
+                end
+            end
+        end
+    end
+    return ClosestPlayer
+end
+
+-- Vòng lặp khóa mục tiêu (Aimlock)
+RunService.RenderStepped:Connect(function()
+    if not AimBotEnabled then return end
+    
+    -- Nếu bật chế độ giữ chuột nhưng không giữ chuột thì không aim
+    if HoldToAim and not IsAiming then return end
+
+    local Target = GetClosestPlayer()
+    if Target and Target.Character and Target.Character:FindFirstChild("Head") then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
+    end
+end)
+
+-- Xử lý sự kiện nhấn giữ chuột (PC) hoặc chạm giữ (Mobile)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        IsAiming = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        IsAiming = false
+    end
+end)
+
+-- KHỞI TẠO GIAO DIỆN NGƯỜI DÙNG (UI)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.Name = "BypassAimlockUI"
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
--- Nút Trái (Đỏ) - kéo để di chuyển tay trái
-local LeftBtn = Instance.new("ImageButton")
-LeftBtn.Size = UDim2.new(0, 100, 0, 100)
-LeftBtn.Position = UDim2.new(0, 20, 1, -140)
-LeftBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-LeftBtn.Image = "rbxassetid://0"
-LeftBtn.Parent = ScreenGui
+-- Khung Menu Chính
+local MainMenu = Instance.new("Frame")
+MainMenu.Name = "MainMenu"
+MainMenu.Size = UDim2.new(0, 220, 0, 160)
+MainMenu.Position = UDim2.new(0.5, -110, 0.4, -80)
+MainMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainMenu.BorderSizePixel = 0
+MainMenu.Active = true
+MainMenu.Draggable = true -- Cho phép kéo thả dễ dàng
+MainMenu.Parent = ScreenGui
 
--- Nút Phải (Xanh) - kéo để di chuyển tay phải
-local RightBtn = Instance.new("ImageButton")
-RightBtn.Size = UDim2.new(0, 100, 0, 100)
-RightBtn.Position = UDim2.new(1, -120, 1, -140)
-RightBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-RightBtn.Image = "rbxassetid://0"
-RightBtn.Parent = ScreenGui
+-- Bo góc Menu
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 8)
+Corner.Parent = MainMenu
 
--- Thêm nhãn
-local function addLabel(btn, text)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(255,255,255)
-    label.TextScaled = true
-    label.Parent = btn
-end
-addLabel(LeftBtn, "KÉO TAY TRÁI")
-addLabel(RightBtn, "KÉO TAY PHẢI")
+-- Thanh tiêu đề
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.7, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "  AIMLOCK MENU"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 14
+Title.Parent = MainMenu
 
--- Tạo cánh tay thật (gắn vào nhân vật) - sử dụng Motor6D để điều khiển
-local function getArmMotor(armName)
-    for _, child in pairs(Character:GetDescendants()) do
-        if child:IsA("Motor6D") and child.Name == armName then
-            return child
+-- Nút Thu Nhỏ / Mở Rộng (Nút O)
+local ToggleSizeButton = Instance.new("TextButton")
+ToggleSizeButton.Size = UDim2.new(0, 30, 0, 30)
+ToggleSizeButton.Position = UDim2.new(0.85, 0, 0, 0)
+ToggleSizeButton.BackgroundTransparency = 1
+ToggleSizeButton.Text = "[ O ]"
+ToggleSizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleSizeButton.Font = Enum.Font.SourceSansBold
+ToggleSizeButton.TextSize = 14
+ToggleSizeButton.Parent = MainMenu
+
+local IsMinimized = false
+local OriginalSize = MainMenu.Size
+
+ToggleSizeButton.MouseButton1Click:Connect(function()
+    if IsMinimized then
+        MainMenu.Size = OriginalSize
+        for _, child in ipairs(MainMenu:GetChildren()) do
+            if child ~= Title and child ~= ToggleSizeButton and child:IsA("GuiObject") then
+                child.Visible = true
+            end
         end
-    end
-    return nil
-end
-
--- Lấy khớp tay trái và phải (Motor6D)
-local leftMotor = getArmMotor("Left Shoulder") or getArmMotor("Left Arm")
-local rightMotor = getArmMotor("Right Shoulder") or getArmMotor("Right Arm")
-
--- Nếu không có Motor6D, tạo mới (cho Robloxian)
-if not leftMotor or not rightMotor then
-    -- Tạo tay giả nếu không có Motor (dành cho script test)
-    local function createDummyArm(side)
-        local arm = Instance.new("Part")
-        arm.Size = Vector3.new(0.8, 0.8, 2)
-        arm.BrickColor = BrickColor.new(side == "Left" and "Bright red" or "Bright green")
-        arm.Material = Enum.Material.SmoothPlastic
-        arm.Anchored = false
-        arm.CanCollide = false
-        arm.Parent = Character
-        
-        local weld = Instance.new("Weld")
-        weld.Part0 = RootPart
-        weld.Part1 = arm
-        weld.C0 = CFrame.new(side == "Left" and -1.5 or 1.5, 0.5, 0)
-        weld.Parent = arm
-        return weld, arm
-    end
-    local leftWeld, leftArm = createDummyArm("Left")
-    local rightWeld, rightArm = createDummyArm("Right")
-    leftMotor = leftWeld
-    rightMotor = rightWeld
-end
-
--- Biến lưu vị trí kéo
-local leftDragStart = nil
-local rightDragStart = nil
-local leftOffset = Vector3.new(0, 0, 0)
-local rightOffset = Vector3.new(0, 0, 0)
-
--- Hàm cập nhật vị trí tay theo offset
-local function updateLeftArm(offset)
-    if leftMotor:IsA("Motor6D") then
-        leftMotor.C0 = CFrame.new(-1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
-    elseif leftMotor:IsA("Weld") then
-        leftMotor.C0 = CFrame.new(-1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
-    end
-end
-
-local function updateRightArm(offset)
-    if rightMotor:IsA("Motor6D") then
-        rightMotor.C0 = CFrame.new(1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
-    elseif rightMotor:IsA("Weld") then
-        rightMotor.C0 = CFrame.new(1.5 + offset.X, 0.5 + offset.Y, offset.Z) * CFrame.Angles(0, 0, 0)
-    end
-end
-
--- Xử lý kéo cho nút trái
-LeftBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        leftDragStart = input.Position
-        -- Lưu offset hiện tại
-        local currentPos = leftMotor.C0.Position
-        leftOffset = Vector3.new(currentPos.X + 1.5, currentPos.Y - 0.5, currentPos.Z)
-    end
-end)
-
-LeftBtn.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        if leftDragStart then
-            local delta = input.Position - leftDragStart
-            -- Tỉ lệ chuyển đổi: 1 pixel = 0.01 stud
-            local moveX = delta.X * 0.01
-            local moveY = -delta.Y * 0.01
-            local newOffset = leftOffset + Vector3.new(moveX, moveY, 0)
-            -- Giới hạn phạm vi di chuyển
-            newOffset = Vector3.new(
-                math.clamp(newOffset.X, -2, 2),
-                math.clamp(newOffset.Y, -1.5, 1.5),
-                math.clamp(newOffset.Z, -1, 1)
-            )
-            updateLeftArm(newOffset)
+        ToggleSizeButton.Text = "[ O ]"
+    else
+        MainMenu.Size = UDim2.new(0, 220, 0, 30)
+        for _, child in ipairs(MainMenu:GetChildren()) do
+            if child ~= Title and child ~= ToggleSizeButton and child:IsA("GuiObject") then
+                child.Visible = false
+            end
         end
+        ToggleSizeButton.Text = "[ O ]"
+    end
+    IsMinimized = not IsMinimized
+end)
+
+-- Layout danh sách các nút cài đặt
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Parent = MainMenu
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Padding = UDim.new(0, 5)
+
+-- Đẩy các nút xuống dưới thanh tiêu đề
+local ContentPadding = Instance.new("Frame")
+ContentPadding.Size = UDim2.new(1, 0, 0, 30)
+ContentPadding.BackgroundTransparency = 1
+ContentPadding.LayoutOrder = 1
+ContentPadding.Parent = MainMenu
+
+-- Nút chuyển đổi Aimlock (BẬT / TẮT)
+local AimToggleButton = Instance.new("TextButton")
+AimToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+AimToggleButton.Position = UDim2.new(0.05, 0, 0, 0)
+AimToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimToggleButton.Text = "Aimlock: TẮT"
+AimToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+AimToggleButton.Font = Enum.Font.SourceSansBold
+AimToggleButton.TextSize = 14
+AimToggleButton.LayoutOrder = 2
+AimToggleButton.Parent = MainMenu
+
+local AimButtonCorner = Instance.new("UICorner")
+AimButtonCorner.CornerRadius = UDim.new(0, 6)
+AimButtonCorner.Parent = AimToggleButton
+
+AimToggleButton.MouseButton1Click:Connect(function()
+    AimBotEnabled = not AimBotEnabled
+    if AimBotEnabled then
+        AimToggleButton.Text = "Aimlock: BẬT"
+        AimToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        AimToggleButton.Text = "Aimlock: TẮT"
+        AimToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end)
 
-LeftBtn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        leftDragStart = nil
+-- Nút chuyển đổi Chế độ giữ chuột (BẬT / TẮT)
+local HoldToggleButton = Instance.new("TextButton")
+HoldToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+HoldToggleButton.Position = UDim2.new(0.05, 0, 0, 0)
+HoldToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+HoldToggleButton.Text = "Giữ chuột để Aim: TẮT"
+HoldToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+HoldToggleButton.Font = Enum.Font.SourceSansBold
+HoldToggleButton.TextSize = 14
+HoldToggleButton.LayoutOrder = 3
+HoldToggleButton.Parent = MainMenu
+
+local HoldButtonCorner = Instance.new("UICorner")
+HoldButtonCorner.CornerRadius = UDim.new(0, 6)
+HoldButtonCorner.Parent = HoldToggleButton
+
+HoldToggleButton.MouseButton1Click:Connect(function()
+    HoldToAim = not HoldToAim
+    if HoldToAim then
+        HoldToggleButton.Text = "Giữ chuột để Aim: BẬT"
+        HoldToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        HoldToggleButton.Text = "Giữ chuột để Aim: TẮT"
+        HoldToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end)
-
--- Xử lý kéo cho nút phải
-RightBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        rightDragStart = input.Position
-        local currentPos = rightMotor.C0.Position
-        rightOffset = Vector3.new(currentPos.X - 1.5, currentPos.Y - 0.5, currentPos.Z)
-    end
-end)
-
-RightBtn.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        if rightDragStart then
-            local delta = input.Position - rightDragStart
-            local moveX = delta.X * 0.01
-            local moveY = -delta.Y * 0.01
-            local newOffset = rightOffset + Vector3.new(moveX, moveY, 0)
-            newOffset = Vector3.new(
-                math.clamp(newOffset.X, -2, 2),
-                math.clamp(newOffset.Y, -1.5, 1.5),
-                math.clamp(newOffset.Z, -1, 1)
-            )
-            updateRightArm(newOffset)
-        end
-    end
-end)
-
-RightBtn.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        rightDragStart = nil
-    end
-end)
-
--- Reset khi nhân vật respawn
-Player.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    RootPart = Character:WaitForChild("HumanoidRootPart")
-    Humanoid = Character:WaitForChild("Humanoid")
-    -- Cập nhật lại Motor
-    leftMotor = getArmMotor("Left Shoulder") or getArmMotor("Left Arm")
-    rightMotor = getArmMotor("Right Shoulder") or getArmMotor("Right Arm")
-    if not leftMotor or not rightMotor then
-        -- Tạo lại tay giả
-        local lw, la = createDummyArm("Left")
-        local rw, ra = createDummyArm("Right")
-        leftMotor = lw
-        rightMotor = rw
-    end
-    -- Reset về vị trí mặc định
-    updateLeftArm(Vector3.new(0, 0, 0))
-    updateRightArm(Vector3.new(0, 0, 0))
-end)
-
-print("Script kéo thả tay đã chạy. Kéo nút Đỏ để di chuyển tay trái, kéo nút Xanh để di chuyển tay phải.")
