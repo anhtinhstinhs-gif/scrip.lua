@@ -1,20 +1,20 @@
--- Roblox Head Aimlock Script - FIXED V3 (Giữ chuột trái hoạt động 100%)
+-- Roblox Head Aimlock Script - V4 (Có kiểm tra vật cản + chỉ aim người chơi khác)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 
 -- Trạng thái
 local AimBotEnabled = false
 local HoldToAim = false
 local IsMouseHeld = false
+local AimDistance = 200  -- Khoảng cách tối đa để aim (studs)
 
 -- =====================================================================
--- CÁCH 1: DÙNG ContextActionService (BẮT SỰ KIỆN CHUỘT CHÍNH XÁC NHẤT)
+-- BẮT SỰ KIỆN GIỮ CHUỘT (ContextActionService - KHÔNG BỊ CHẶN)
 -- =====================================================================
-local ContextActionService = game:GetService("ContextActionService")
-
 local function onMouseAction(actionName, inputState, inputObject)
     if actionName == "AimHold" then
         if inputState == Enum.UserInputState.Begin then
@@ -25,44 +25,103 @@ local function onMouseAction(actionName, inputState, inputObject)
     end
 end
 
--- Đăng ký sự kiện bắt giữ chuột trái (KHÔNG bị game chặn)
-ContextActionService:BindAction("AimHold", onMouseAction, false, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch)
+ContextActionService:BindAction("AimHold", onMouseAction, false, 
+    Enum.UserInputType.MouseButton1, 
+    Enum.UserInputType.Touch
+)
 
 -- =====================================================================
--- CÁCH 2: DÙNG UserInputService (DỰ PHÒNG)
+-- HÀM KIỂM TRA VẬT CẢN (CÓ TƯỜNG/BLOCK CHẮN KHÔNG?)
 -- =====================================================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- Bỏ qua gameProcessed để bắt cả khi bấm vào game
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        IsMouseHeld = true
+local function isTargetVisible(targetPart)
+    -- Kiểm tra nhân vật của mình có tồn tại không
+    if not LocalPlayer.Character then
+        return false
     end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        IsMouseHeld = false
+    
+    -- Lấy vị trí mắt camera (điểm bắn tia)
+    local origin = Camera.CFrame.Position
+    
+    -- Lấy vị trí của mục tiêu (đầu)
+    local targetPosition = targetPart.Position
+    
+    -- Hướng từ mắt đến mục tiêu
+    local direction = (targetPosition - origin)
+    
+    -- Khoảng cách từ mắt đến mục tiêu
+    local distance = direction.Magnitude
+    
+    -- Nếu xa hơn khoảng cách tối đa thì không aim
+    if distance > AimDistance then
+        return false
     end
-end)
+    
+    -- Tạo tham số cho tia kiểm tra
+    local raycastParams = RaycastParams.new()
+    
+    -- Bỏ qua nhân vật của mình và camera (không tự chặn)
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    
+    -- Bỏ qua nước (không coi nước là vật cản)
+    raycastParams.IgnoreWater = true
+    
+    -- BẮN TIA KIỂM TRA
+    local hitResult = workspace:Raycast(origin, direction, raycastParams)
+    
+    -- Nếu có vật gì đó chặn đường
+    if hitResult then
+        local hitObject = hitResult.Instance
+        
+        -- Nếu vật chặn đó là một phần của nhân vật mục tiêu
+        -- → Không có vật cản (vì mục tiêu là người chơi)
+        if hitObject and hitObject:IsDescendantOf(targetPart.Parent) then
+            return true  -- NHÌN THẤY, ĐƯỢC AIM
+        end
+        
+        -- Ngược lại: có tường/block chặn → KHÔNG AIM
+        return false
+    end
+    
+    -- Không có gì chặn đường → NHÌN THẤY, ĐƯỢC AIM
+    return true
+end
 
 -- =====================================================================
--- HÀM TÌM NGƯỜI CHƠI GẦN TÂM MÀN HÌNH
+-- HÀM TÌM NGƯỜI CHƠI GẦN NHẤT (CHỈ AIM NGƯỜI KHÁC, CÓ KIỂM TRA VẬT CẢN)
 -- =====================================================================
 local function GetClosestPlayer()
     local ClosestPlayer = nil
     local ShortestDistance = math.huge
     local MousePosition = UserInputService:GetMouseLocation()
 
+    -- Duyệt qua tất cả người chơi trong game
     for _, Player in ipairs(Players:GetPlayers()) do
-        if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Head") then
-            local Humanoid = Player.Character:FindFirstChildOfClass("Humanoid")
-            if Humanoid and Humanoid.Health > 0 then
-                local Head = Player.Character.Head
-                local ScreenPosition, OnScreen = Camera:WorldToViewportPoint(Head.Position)
-                if OnScreen then
-                    local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MousePosition).Magnitude
-                    if Distance < ShortestDistance then
-                        ClosestPlayer = Player
-                        ShortestDistance = Distance
+        -- ❌ BỎ QUA CHÍNH MÌNH - CHỈ AIM NGƯỜI KHÁC
+        if Player ~= LocalPlayer then
+            local character = Player.Character
+            if character then
+                local Humanoid = character:FindFirstChildOfClass("Humanoid")
+                -- Kiểm tra người chơi còn sống không
+                if Humanoid and Humanoid.Health > 0 then
+                    -- Lấy phần đầu (HEAD) để aim
+                    local Head = character:FindFirstChild("Head")
+                    if Head then
+                        -- Kiểm tra xem người này có nằm trong màn hình không
+                        local ScreenPosition, OnScreen = Camera:WorldToViewportPoint(Head.Position)
+                        
+                        if OnScreen then
+                            -- ✅ KIỂM TRA VẬT CẢN: chỉ aim nếu không có tường/block chắn
+                            if isTargetVisible(Head) then
+                                -- Tính khoảng cách từ chuột đến người đó trên màn hình
+                                local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MousePosition).Magnitude
+                                
+                                if Distance < ShortestDistance then
+                                    ClosestPlayer = Player
+                                    ShortestDistance = Distance
+                                end
+                            end
+                        end
                     end
                 end
             end
@@ -72,18 +131,22 @@ local function GetClosestPlayer()
 end
 
 -- =====================================================================
--- VÒNG LẶP AIMLOCK - LOGIC ĐÚNG
+-- VÒNG LẶP AIMLOCK
 -- =====================================================================
 RunService.RenderStepped:Connect(function()
+    -- Nếu AIM đang TẮT thì thoát
     if not AimBotEnabled then return end
 
-    -- KIỂM TRA: Nếu bật chế độ giữ chuột → chỉ aim khi đang giữ
+    -- Kiểm tra chế độ giữ chuột
     if HoldToAim and not IsMouseHeld then
         return  -- Không giữ chuột → không aim
     end
 
+    -- Tìm người chơi gần nhất (tự động kiểm tra vật cản bên trong)
     local Target = GetClosestPlayer()
+    
     if Target and Target.Character and Target.Character:FindFirstChild("Head") then
+        -- AIM VÀO ĐẦU CỦA NGƯỜI CHƠI KHÁC
         Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
     end
 end)
@@ -92,7 +155,7 @@ end)
 -- GIAO DIỆN MENU
 -- =====================================================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AimlockMenuV3"
+ScreenGui.Name = "AimlockMenuV4"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
@@ -110,7 +173,7 @@ Instance.new("UICorner", MainMenu).CornerRadius = UDim.new(0, 8)
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0.7, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.Text = "  AIMLOCK V3 (FIX)"
+Title.Text = "  AIMLOCK V4 (CHẶN TƯỜNG)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Font = Enum.Font.SourceSansBold
@@ -198,4 +261,5 @@ HoldToggleButton.MouseButton1Click:Connect(function()
     HoldToggleButton.TextColor3 = HoldToAim and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
-print("✅ AIMLOCK V3 ĐÃ SỬA LỖI! Giữ chuột trái để aim.")
+print("✅ AIMLOCK V4 ĐÃ SẴN SÀNG!")
+print("📌 Chỉ aim người chơi khác, tự động bỏ qua tường/block")
