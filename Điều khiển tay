@@ -1,25 +1,38 @@
--- Roblox Head Aimlock Script (Universal) - FIXED V2
--- Hỗ trợ Menu kéo thả, thu nhỏ/mở rộng, hỗ trợ Mobile và PC
-
+-- Roblox Head Aimlock Script - FIXED V3 (Giữ chuột trái hoạt động 100%)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
--- Trạng thái cấu hình
+-- Trạng thái
 local AimBotEnabled = false
-local HoldToAim = false      -- true = giữ chuột mới aim, false = aim liên tục
-local IsMouseHeld = false    -- Trạng thái giữ chuột thực tế
+local HoldToAim = false
+local IsMouseHeld = false
 
 -- =====================================================================
--- LỖI CŨ: Sự kiện InputBegan/InputEnded bị game chặn (gameProcessed = true)
--- CÁCH SỬA: Dùng UserInputService.InputBegan với gameProcessed = false để bắt sự kiện
+-- CÁCH 1: DÙNG ContextActionService (BẮT SỰ KIỆN CHUỘT CHÍNH XÁC NHẤT)
 -- =====================================================================
+local ContextActionService = game:GetService("ContextActionService")
 
--- Xử lý sự kiện nhấn giữ chuột (PC) hoặc chạm giữ (Mobile)
+local function onMouseAction(actionName, inputState, inputObject)
+    if actionName == "AimHold" then
+        if inputState == Enum.UserInputState.Begin then
+            IsMouseHeld = true
+        elseif inputState == Enum.UserInputState.End then
+            IsMouseHeld = false
+        end
+    end
+end
+
+-- Đăng ký sự kiện bắt giữ chuột trái (KHÔNG bị game chặn)
+ContextActionService:BindAction("AimHold", onMouseAction, false, Enum.UserInputType.MouseButton1, Enum.UserInputType.Touch)
+
+-- =====================================================================
+-- CÁCH 2: DÙNG UserInputService (DỰ PHÒNG)
+-- =====================================================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- ✅ SỬA: Bỏ qua gameProcessed để bắt cả khi đang bấm vào game
+    -- Bỏ qua gameProcessed để bắt cả khi bấm vào game
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         IsMouseHeld = true
     end
@@ -32,24 +45,21 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 -- =====================================================================
--- HÀM TÌM NGƯỜI CHƠI GẦN NHẤT VỚI TÂM MÀN HÌNH
+-- HÀM TÌM NGƯỜI CHƠI GẦN TÂM MÀN HÌNH
 -- =====================================================================
 local function GetClosestPlayer()
     local ClosestPlayer = nil
     local ShortestDistance = math.huge
-
-    -- Lấy vị trí chuột trên màn hình
     local MousePosition = UserInputService:GetMouseLocation()
 
     for _, Player in ipairs(Players:GetPlayers()) do
-        if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Head") and Player.Character:FindFirstChildOfClass("Humanoid") then
-            if Player.Character.Humanoid.Health > 0 then
+        if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Head") then
+            local Humanoid = Player.Character:FindFirstChildOfClass("Humanoid")
+            if Humanoid and Humanoid.Health > 0 then
                 local Head = Player.Character.Head
                 local ScreenPosition, OnScreen = Camera:WorldToViewportPoint(Head.Position)
-
                 if OnScreen then
                     local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MousePosition).Magnitude
-
                     if Distance < ShortestDistance then
                         ClosestPlayer = Player
                         ShortestDistance = Distance
@@ -62,43 +72,31 @@ local function GetClosestPlayer()
 end
 
 -- =====================================================================
--- VÒNG LẶP AIMLOCK - ĐÃ SỬA LOGIC GIỮ CHUỘT
+-- VÒNG LẶP AIMLOCK - LOGIC ĐÚNG
 -- =====================================================================
 RunService.RenderStepped:Connect(function()
     if not AimBotEnabled then return end
 
-    -- ✅ SỬA LOGIC: Chỉ aim khi được phép
-    local shouldAim = false
-
-    if HoldToAim then
-        -- Chế độ giữ chuột: chỉ aim khi đang giữ chuột trái hoặc chạm
-        if IsMouseHeld then
-            shouldAim = true
-        end
-    else
-        -- Chế độ thường: aim liên tục
-        shouldAim = true
+    -- KIỂM TRA: Nếu bật chế độ giữ chuột → chỉ aim khi đang giữ
+    if HoldToAim and not IsMouseHeld then
+        return  -- Không giữ chuột → không aim
     end
 
-    if shouldAim then
-        local Target = GetClosestPlayer()
-        if Target and Target.Character and Target.Character:FindFirstChild("Head") then
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
-        end
+    local Target = GetClosestPlayer()
+    if Target and Target.Character and Target.Character:FindFirstChild("Head") then
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
     end
 end)
 
 -- =====================================================================
--- KHỞI TẠO GIAO DIỆN NGƯỜI DÙNG (UI)
+-- GIAO DIỆN MENU
 -- =====================================================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BypassAimlockUI"
+ScreenGui.Name = "AimlockMenuV3"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Khung Menu Chính
 local MainMenu = Instance.new("Frame")
-MainMenu.Name = "MainMenu"
 MainMenu.Size = UDim2.new(0, 220, 0, 160)
 MainMenu.Position = UDim2.new(0.5, -110, 0.4, -80)
 MainMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -107,23 +105,18 @@ MainMenu.Active = true
 MainMenu.Draggable = true
 MainMenu.Parent = ScreenGui
 
--- Bo góc Menu
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 8)
-Corner.Parent = MainMenu
+Instance.new("UICorner", MainMenu).CornerRadius = UDim.new(0, 8)
 
--- Thanh tiêu đề
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0.7, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.Text = "  AIMLOCK MENU V2"
+Title.Text = "  AIMLOCK V3 (FIX)"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
 Title.Parent = MainMenu
 
--- Nút Thu Nhỏ / Mở Rộng (Nút O)
 local ToggleSizeButton = Instance.new("TextButton")
 ToggleSizeButton.Size = UDim2.new(0, 30, 0, 30)
 ToggleSizeButton.Position = UDim2.new(0.85, 0, 0, 0)
@@ -145,7 +138,6 @@ ToggleSizeButton.MouseButton1Click:Connect(function()
                 child.Visible = true
             end
         end
-        ToggleSizeButton.Text = "[ O ]"
     else
         MainMenu.Size = UDim2.new(0, 220, 0, 30)
         for _, child in ipairs(MainMenu:GetChildren()) do
@@ -153,25 +145,22 @@ ToggleSizeButton.MouseButton1Click:Connect(function()
                 child.Visible = false
             end
         end
-        ToggleSizeButton.Text = "[ O ]"
     end
     IsMinimized = not IsMinimized
 end)
 
--- Layout danh sách các nút cài đặt
 local ListLayout = Instance.new("UIListLayout")
 ListLayout.Parent = MainMenu
 ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ListLayout.Padding = UDim.new(0, 5)
 
--- Đẩy các nút xuống dưới thanh tiêu đề
 local ContentPadding = Instance.new("Frame")
 ContentPadding.Size = UDim2.new(1, 0, 0, 30)
 ContentPadding.BackgroundTransparency = 1
 ContentPadding.LayoutOrder = 1
 ContentPadding.Parent = MainMenu
 
--- Nút chuyển đổi Aimlock (BẬT / TẮT)
+-- Nút BẬT/TẮT AIM
 local AimToggleButton = Instance.new("TextButton")
 AimToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
 AimToggleButton.Position = UDim2.new(0.05, 0, 0, 0)
@@ -182,51 +171,31 @@ AimToggleButton.Font = Enum.Font.SourceSansBold
 AimToggleButton.TextSize = 14
 AimToggleButton.LayoutOrder = 2
 AimToggleButton.Parent = MainMenu
-
-local AimButtonCorner = Instance.new("UICorner")
-AimButtonCorner.CornerRadius = UDim.new(0, 6)
-AimButtonCorner.Parent = AimToggleButton
+Instance.new("UICorner", AimToggleButton).CornerRadius = UDim.new(0, 6)
 
 AimToggleButton.MouseButton1Click:Connect(function()
     AimBotEnabled = not AimBotEnabled
-    if AimBotEnabled then
-        AimToggleButton.Text = "Aimlock: BẬT"
-        AimToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        AimToggleButton.Text = "Aimlock: TẮT"
-        AimToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-    end
+    AimToggleButton.Text = AimBotEnabled and "Aimlock: BẬT" or "Aimlock: TẮT"
+    AimToggleButton.TextColor3 = AimBotEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- Nút chuyển đổi Chế độ giữ chuột (BẬT / TẮT)
+-- Nút BẬT/TẮT GIỮ CHUỘT
 local HoldToggleButton = Instance.new("TextButton")
 HoldToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
 HoldToggleButton.Position = UDim2.new(0.05, 0, 0, 0)
 HoldToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-HoldToggleButton.Text = "Giữ chuột để Aim: TẮT"
+HoldToggleButton.Text = "Giữ chuột: TẮT"
 HoldToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
 HoldToggleButton.Font = Enum.Font.SourceSansBold
 HoldToggleButton.TextSize = 14
 HoldToggleButton.LayoutOrder = 3
 HoldToggleButton.Parent = MainMenu
-
-local HoldButtonCorner = Instance.new("UICorner")
-HoldButtonCorner.CornerRadius = UDim.new(0, 6)
-HoldButtonCorner.Parent = HoldToggleButton
+Instance.new("UICorner", HoldToggleButton).CornerRadius = UDim.new(0, 6)
 
 HoldToggleButton.MouseButton1Click:Connect(function()
     HoldToAim = not HoldToAim
-    if HoldToAim then
-        HoldToggleButton.Text = "Giữ chuột để Aim: BẬT"
-        HoldToggleButton.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        HoldToggleButton.Text = "Giữ chuột để Aim: TẮT"
-        HoldToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-    end
+    HoldToggleButton.Text = HoldToAim and "Giữ chuột: BẬT" or "Giữ chuột: TẮT"
+    HoldToggleButton.TextColor3 = HoldToAim and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
--- =====================================================================
--- THÔNG BÁO ĐÃ SỬA LỖI
--- =====================================================================
-print("✅ AIMLOCK V2 ĐÃ SỬA LỖI CHUỘT PC!")
-print("📌 Bật 'Giữ chuột để Aim' để dùng chế độ giữ chuột trái")
+print("✅ AIMLOCK V3 ĐÃ SỬA LỖI! Giữ chuột trái để aim.")
