@@ -1,4 +1,4 @@
--- Roblox Head Aimlock Script (Universal)
+-- Roblox Head Aimlock Script (Universal) - FIXED V2
 -- Hỗ trợ Menu kéo thả, thu nhỏ/mở rộng, hỗ trợ Mobile và PC
 
 local Players = game:GetService("Players")
@@ -9,13 +9,37 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Trạng thái cấu hình
 local AimBotEnabled = false
-local HoldToAim = false
-local IsAiming = false
+local HoldToAim = false      -- true = giữ chuột mới aim, false = aim liên tục
+local IsMouseHeld = false    -- Trạng thái giữ chuột thực tế
 
--- Hàm tìm người chơi gần nhất với tâm màn hình
+-- =====================================================================
+-- LỖI CŨ: Sự kiện InputBegan/InputEnded bị game chặn (gameProcessed = true)
+-- CÁCH SỬA: Dùng UserInputService.InputBegan với gameProcessed = false để bắt sự kiện
+-- =====================================================================
+
+-- Xử lý sự kiện nhấn giữ chuột (PC) hoặc chạm giữ (Mobile)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- ✅ SỬA: Bỏ qua gameProcessed để bắt cả khi đang bấm vào game
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        IsMouseHeld = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        IsMouseHeld = false
+    end
+end)
+
+-- =====================================================================
+-- HÀM TÌM NGƯỜI CHƠI GẦN NHẤT VỚI TÂM MÀN HÌNH
+-- =====================================================================
 local function GetClosestPlayer()
     local ClosestPlayer = nil
     local ShortestDistance = math.huge
+
+    -- Lấy vị trí chuột trên màn hình
+    local MousePosition = UserInputService:GetMouseLocation()
 
     for _, Player in ipairs(Players:GetPlayers()) do
         if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Head") and Player.Character:FindFirstChildOfClass("Humanoid") then
@@ -24,7 +48,6 @@ local function GetClosestPlayer()
                 local ScreenPosition, OnScreen = Camera:WorldToViewportPoint(Head.Position)
 
                 if OnScreen then
-                    local MousePosition = UserInputService:GetMouseLocation()
                     local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MousePosition).Magnitude
 
                     if Distance < ShortestDistance then
@@ -38,34 +61,36 @@ local function GetClosestPlayer()
     return ClosestPlayer
 end
 
--- Vòng lặp khóa mục tiêu (Aimlock)
+-- =====================================================================
+-- VÒNG LẶP AIMLOCK - ĐÃ SỬA LOGIC GIỮ CHUỘT
+-- =====================================================================
 RunService.RenderStepped:Connect(function()
     if not AimBotEnabled then return end
-    
-    -- Nếu bật chế độ giữ chuột nhưng không giữ chuột thì không aim
-    if HoldToAim and not IsAiming then return end
 
-    local Target = GetClosestPlayer()
-    if Target and Target.Character and Target.Character:FindFirstChild("Head") then
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
+    -- ✅ SỬA LOGIC: Chỉ aim khi được phép
+    local shouldAim = false
+
+    if HoldToAim then
+        -- Chế độ giữ chuột: chỉ aim khi đang giữ chuột trái hoặc chạm
+        if IsMouseHeld then
+            shouldAim = true
+        end
+    else
+        -- Chế độ thường: aim liên tục
+        shouldAim = true
+    end
+
+    if shouldAim then
+        local Target = GetClosestPlayer()
+        if Target and Target.Character and Target.Character:FindFirstChild("Head") then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
+        end
     end
 end)
 
--- Xử lý sự kiện nhấn giữ chuột (PC) hoặc chạm giữ (Mobile)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        IsAiming = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        IsAiming = false
-    end
-end)
-
+-- =====================================================================
 -- KHỞI TẠO GIAO DIỆN NGƯỜI DÙNG (UI)
+-- =====================================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BypassAimlockUI"
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -79,7 +104,7 @@ MainMenu.Position = UDim2.new(0.5, -110, 0.4, -80)
 MainMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainMenu.BorderSizePixel = 0
 MainMenu.Active = true
-MainMenu.Draggable = true -- Cho phép kéo thả dễ dàng
+MainMenu.Draggable = true
 MainMenu.Parent = ScreenGui
 
 -- Bo góc Menu
@@ -91,7 +116,7 @@ Corner.Parent = MainMenu
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(0.7, 0, 0, 30)
 Title.BackgroundTransparency = 1
-Title.Text = "  AIMLOCK MENU"
+Title.Text = "  AIMLOCK MENU V2"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Font = Enum.Font.SourceSansBold
@@ -199,3 +224,9 @@ HoldToggleButton.MouseButton1Click:Connect(function()
         HoldToggleButton.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end)
+
+-- =====================================================================
+-- THÔNG BÁO ĐÃ SỬA LỖI
+-- =====================================================================
+print("✅ AIMLOCK V2 ĐÃ SỬA LỖI CHUỘT PC!")
+print("📌 Bật 'Giữ chuột để Aim' để dùng chế độ giữ chuột trái")
