@@ -1,3 +1,6 @@
+-- Roblox Head Aimlock & Mod Menu Custom Theme V24.8.1 (Đã sửa lỗi bay liên tục của Tấm Đế)
+-- Sửa lỗi phản hồi vòng lặp tọa độ Y bằng cách khóa trục Y của tấm đế khi người chơi đứng trên đó
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -7,7 +10,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- 1. KHỞI TẠO GIAO DIỆN MENU V24.8.1 (NÂNGCẤP NÚT GẠT)
+-- 1. KHỞI TẠO GIAO DIỆN MENU V24.8.1
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuCustomTheme_V24_8_1"
 ScreenGui.ResetOnSpawn = false
@@ -29,7 +32,7 @@ local OpenCorner = Instance.new("UICorner")
 OpenCorner.CornerRadius = UDim.new(1, 0)
 OpenCorner.Parent = OpenButton
 
--- KHUNG MENU CHÍNH (GIỮ NGUYÊN ĐỘ TRONG SUỐT V24.8)
+-- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 450, 0, 250) 
@@ -43,7 +46,7 @@ local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
 MainCorner.Parent = MainFrame
 
--- HÌNH NỀN MENU V24.8 (HIỂN THỊ SÁNG RÕ FULL ĐẦU)
+-- HÌNH NỀN MENU V24.8
 local BackgroundImage = Instance.new("ImageLabel")
 BackgroundImage.Name = "MenuBackground"
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
@@ -81,7 +84,7 @@ MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.ZIndex = 2
 MinimizeButton.Parent = MainFrame
 
--- BỐ CỤC HAI CỘT (GIỮ NGUYÊN ĐỘ RỘNG THU GỌN CỦA V24.8)
+-- BỐ CỤC HAI CỘT
 local LeftColumn = Instance.new("Frame", MainFrame)
 LeftColumn.Size = UDim2.new(0.45, -10, 1, -45)
 LeftColumn.Position = UDim2.new(0, 10, 0, 40)
@@ -89,7 +92,7 @@ LeftColumn.BackgroundTransparency = 1
 LeftColumn.ZIndex = 2
 
 local RightColumn = Instance.new("Frame", MainFrame)
-RightColumn.Size = UDim2.new(0.42, -10, 1, -45) -- Điều chỉnh nhẹ để vừa nút gạt mới
+RightColumn.Size = UDim2.new(0.42, -10, 1, -45)
 RightColumn.Position = UDim2.new(1, -190, 0, 40)
 RightColumn.BackgroundTransparency = 1
 RightColumn.ZIndex = 2
@@ -97,7 +100,7 @@ RightColumn.ZIndex = 2
 local RainbowObjects = {} 
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
 
--- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG (GIỮ NGUYÊN)
+-- CÁC BIẾN TRẠNG THÁI TÍNH NĂNG
 local SpinActive = false
 local HitboxEspActive = false   
 local KillAuraActive = false     
@@ -112,7 +115,7 @@ local AimDistance = 150
 if setfpscap then setfpscap(999) end
 
 -- =====================================================================
--- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN (SWITCH UI) Y HỆT ẢNH MẪU
+-- HÀM TẠO NÚT CÔNG TẮC GẠT TRÒN
 local function createToggleSwitch(parentCol, text, yOffset, callback)
     local Container = Instance.new("Frame")
     Container.Size = UDim2.new(1, 0, 0, 24)
@@ -133,11 +136,10 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     TextLabel.ZIndex = 2
     TextLabel.Parent = Container
 
-    -- Khung nền nút gạt (Bo tròn)
     local SwitchBase = Instance.new("TextButton")
     SwitchBase.Size = UDim2.new(0, 50, 0, 22)
     SwitchBase.Position = UDim2.new(1, -52, 0, 1)
-    SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69) -- Mặc định ĐỎ (OFF)
+    SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
     SwitchBase.Text = ""
     SwitchBase.ZIndex = 2
     SwitchBase.Parent = Container
@@ -146,7 +148,6 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     BaseCorner.CornerRadius = UDim.new(1, 0)
     BaseCorner.Parent = SwitchBase
 
-    -- Chữ ON / OFF nhỏ nằm trong nút gạt
     local StatusText = Instance.new("TextLabel")
     StatusText.Size = UDim2.new(1, 0, 1, 0)
     StatusText.BackgroundTransparency = 1
@@ -154,14 +155,13 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
     StatusText.TextSize = 10
     StatusText.Font = Enum.Font.SourceSansBold
-    StatusText.Position = UDim2.new(0, 8, 0, 0) -- Lệch phải khi tắt
+    StatusText.Position = UDim2.new(0, 8, 0, 0)
     StatusText.ZIndex = 2
     StatusText.Parent = SwitchBase
 
-    -- Cái chấm tròn màu trắng để gạt qua lại
     local CircleSlider = Instance.new("Frame")
     CircleSlider.Size = UDim2.new(0, 18, 0, 18)
-    CircleSlider.Position = UDim2.new(0, 2, 0, 2) -- Nằm bên trái khi OFF
+    CircleSlider.Position = UDim2.new(0, 2, 0, 2)
     CircleSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     CircleSlider.ZIndex = 3
     CircleSlider.Parent = SwitchBase
@@ -174,13 +174,11 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     SwitchBase.MouseButton1Click:Connect(function()
         isOn = not isOn
         if isOn then
-            -- Chuyển sang màu XANH LÁ và đẩy chấm tròn sang phải
             SwitchBase.BackgroundColor3 = Color3.fromRGB(40, 167, 69)
             CircleSlider.Position = UDim2.new(1, -20, 0, 2)
             StatusText.Text = "ON"
             StatusText.Position = UDim2.new(0, -8, 0, 0)
         else
-            -- Quay về màu ĐỎ và đẩy chấm tròn sang trái
             SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
             CircleSlider.Position = UDim2.new(0, 2, 0, 2)
             StatusText.Text = "OFF"
@@ -191,27 +189,46 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
 end
 
 -- =====================================================================
--- GIỮ NGUYÊN CÁC LOGIC GAME CŨ (KHÔNG XÓA)
+-- KHẮC PHỤC LỖI TẤM ĐẾ ĐỠ CHÂN TRÔI LÊN TRÊN (LEVITATION LOOP BUG)
 
 local CharacterPlatform = nil
+local LockedPlatformY = nil -- Lưu trữ cao độ Y cố định để tránh lặp vô hạn khi đứng đè lên platform
+
 local function updatePlatform()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if PlatformActive and hrp then
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    
+    if PlatformActive and hrp and humanoid then
         if not CharacterPlatform or not CharacterPlatform.Parent then
             CharacterPlatform = Instance.new("Part")
             CharacterPlatform.Name = "ClientWalkPlatform"
-            CharacterPlatform.Size = Vector3.new(5, 0.5, 5)
+            CharacterPlatform.Size = Vector3.new(6, 0.5, 6)
             CharacterPlatform.Anchored = true
             CharacterPlatform.CanCollide = true
             CharacterPlatform.Material = Enum.Material.ForceField
             CharacterPlatform.Color = Color3.fromRGB(0, 255, 0)
             CharacterPlatform.Transparency = 0.4 
             CharacterPlatform.Parent = workspace
+            LockedPlatformY = hrp.Position.Y - 3.25
         end
-        CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, hrp.Position.Y - 3.25, hrp.Position.Z)
+        
+        -- Nếu người chơi nhảy lên hoặc chủ động di chuyển cao hơn (vượt mức nền cũ) thì cập nhật Y mới
+        if hrp.Position.Y - 3.25 > LockedPlatformY + 1.5 then
+            LockedPlatformY = hrp.Position.Y - 3.25
+        -- Nếu người chơi rơi tự do xuống dưới sâu hơn vị trí nền cũ thì cập nhật để đỡ chân kịp thời
+        elseif hrp.Position.Y - 3.25 < LockedPlatformY - 4 then
+            LockedPlatformY = hrp.Position.Y - 3.25
+        end
+        
+        -- Cập nhật tọa độ X, Z theo nhân vật nhưng khóa tọa độ Y cố định để triệt tiêu lỗi đẩy vô hạn
+        CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, LockedPlatformY, hrp.Position.Z)
     else
-        if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil end
+        if CharacterPlatform then 
+            CharacterPlatform:Destroy() 
+            CharacterPlatform = nil 
+            LockedPlatformY = nil
+        end
     end
 end
 
@@ -368,12 +385,12 @@ end
 -- =====================================================================
 -- PHÂN BỔ THIẾT LẬP GIAO DIỆN MỚI
 
--- --- CỘT TRÁI (THANH TRƯỢT V24.8) ---
+-- --- CỘT TRÁI ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val) currentSpeed = val end)
 createSlider(LeftColumn, "Độ cao nhảy", 45, 50, 300, 50, function(val) currentJump = val end)
 createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val) AimDistance = val end)
 
--- --- CỘT PHẢI (NÂNG CẤP LÊN CÔNG TẮC GẠT TRÒN THEO ẢNH) ---
+-- --- CỘT PHẢI ---
 local FpsBoostBtn = Instance.new("TextButton")
 FpsBoostBtn.Name = "FpsBoostBtn"; FpsBoostBtn.Size = UDim2.new(1, 0, 0, 24); FpsBoostBtn.Position = UDim2.new(0, 0, 0, 0)
 FpsBoostBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); FpsBoostBtn.Text = "Tối Ưu FPS: CLICK"
@@ -400,7 +417,7 @@ createToggleSwitch(RightColumn, "Mục tiêu AIM", 90, function(state) AimActive
 createToggleSwitch(RightColumn, "AOE Kill Toàn Bản Đồ", 120, function(state) KillAuraActive = state end)
 createToggleSwitch(RightColumn, "Tấm Đế Đỡ Chân", 150, function(state) PlatformActive = state end)
 
--- HIỆU ỨNG CẦU VỒNG ĐỔI MÀU THANH TRƯỢT VÀ NÚT FPS BOOST GỐC
+-- HIỆU ỨNG CẦU VỒNG ĐỔI MÀU THANH TRƯỢT VÀ NÚT FPS BOOST
 local hue = 0
 RunService.RenderStepped:Connect(function(deltaTime)
     hue = (hue + (deltaTime * 0.1)) % 1
