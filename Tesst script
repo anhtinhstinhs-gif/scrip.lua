@@ -1,9 +1,9 @@
 --[[
-    MÃ NGUỒN: SỬA LỖI TỰ ĐỘNG TẮT KHI HẾT 5 GIÂY + TÍCH HỢP ID ẢNH ĐÃ XÁC THỰC
+    MÃ NGUỒN: SỬA LỖI HIỂN THỊ ẢNH NỀN MENU (TỰ ĐỘNG THU NHỎ VỪA KÍCH THƯỚC)
     HƯỚNG DẪN DÁN: Thay thế toàn bộ mã nguồn cũ bằng đoạn mã này trong 'LocalScript'.
     SỬA ĐỔI CHÍNH: 
-    - Khắc phục triệt để lỗi không tự ngắt sau 5 giây bằng cách đồng bộ lại luồng đếm thời gian thực.
-    - Thêm hình ảnh nền menu sử dụng ID Asset đã xác thực: rbxassetid://91770159785836
+    - Đổi ScaleType từ 'Stretch' sang 'Fit' để hệ thống tự động co giãn và thu nhỏ ảnh vừa khít với khung menu.
+    - Đặt BackgroundTransparency thành 1 để nền đen cũ không che mất ảnh.
 --]]
 
 local Players = game:GetService("Players")
@@ -17,15 +17,15 @@ ScreenGui.Name = "TimeDilationGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Khung chứa Menu chính (Chuyển thành ImageLabel để hiển thị ảnh nền)
+-- Khung chứa Menu chính (Sử dụng ImageLabel)
 local MainMenu = Instance.new("ImageLabel")
 MainMenu.Name = "MainMenu"
 MainMenu.Size = UDim2.new(0, 180, 0, 80)
 MainMenu.Position = UDim2.new(0.05, 0, 0.4, 0)
-MainMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainMenu.BackgroundTransparency = 1 -- Ẩn nền mặc định để ảnh hiển thị rõ ràng
 MainMenu.BorderSizePixel = 0
-MainMenu.Image = "rbxassetid://91770159785836" -- ID ảnh đã được xác thực
-MainMenu.ScaleType = Enum.ScaleType.Stretch
+MainMenu.Image = "rbxassetid://91770159785836" 
+MainMenu.ScaleType = Enum.ScaleType.Fit -- TỰ ĐỘNG THU NHỎ ẢNH VỪA VỚI KÍCH THƯỚC KHUNG MENU
 MainMenu.Active = true
 MainMenu.Draggable = true 
 MainMenu.Parent = ScreenGui
@@ -97,7 +97,6 @@ local renderConnection = nil
 local colorCorrection = nil
 local startTime = 0
 
--- Hàm chụp trạng thái hệ thống cục bộ
 local function takeSnapshots()
     table.clear(snapshots)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -112,24 +111,20 @@ local function takeSnapshots()
     end
 end
 
--- Hàm tắt hoàn toàn tính năng và khôi phục trạng thái
 local function stopVisualFreeze()
     if not isActive then return end
     isActive = false
     
-    -- Ngắt kết nối vòng lặp ngay lập tức để huỷ đóng băng
     if renderConnection then
         renderConnection:Disconnect()
         renderConnection = nil
     end
     
-    -- Gỡ bỏ hiệu ứng màn hình
     if colorCorrection then
         colorCorrection:Destroy()
         colorCorrection = nil
     end
     
-    -- Khôi phục hoạt ảnh chuyển động
     for player, _ in pairs(snapshots) do
         if player.Character then
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
@@ -141,19 +136,16 @@ local function stopVisualFreeze()
         end
     end
     
-    -- Đặt lại trạng thái UI
     StatusCircle.Visible = false
     ActionButton.Text = "BẬT ĐÔNG CỨNG"
     ActionButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
 end
 
--- Hàm bật tính năng đông cứng
 local function startVisualFreeze()
     if isActive then return end
     isActive = true
-    startTime = os.clock() -- Ghi lại thời gian chính xác theo hệ thống máy tính
+    startTime = os.clock()
     
-    -- Cập nhật giao diện hoạt động
     ActionButton.Text = "TẮT TÍNH NĂNG"
     ActionButton.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
     StatusCircle.Visible = true
@@ -161,27 +153,22 @@ local function startVisualFreeze()
     
     takeSnapshots()
     
-    -- Khởi tạo hiệu ứng bộ lọc màu thị giác
     colorCorrection = Instance.new("ColorCorrectionEffect")
     colorCorrection.Saturation = -0.5
     colorCorrection.TintColor = Color3.fromRGB(150, 180, 200)
     colorCorrection.Parent = game.Workspace.CurrentCamera
     
-    -- Vòng lặp RenderStepped liên tục ép vị trí và kiểm soát bộ đếm thời gian thực từng khung hình
     renderConnection = RunService.RenderStepped:Connect(function()
         local elapsedTime = os.clock() - startTime
         local timeLeft = math.max(0, math.ceil(FREEZE_DURATION - elapsedTime))
         
-        -- Cập nhật thời gian thực lên nút tròn
         CountdownLabel.Text = tostring(timeLeft)
         
-        -- Nếu vượt quá hoặc bằng 5 giây, tự động thực hiện dừng hoàn toàn cơ chế
         if elapsedTime >= FREEZE_DURATION then
             stopVisualFreeze()
             return
         end
         
-        -- Thực thi ép đứng im đối với các người chơi có trong danh sách snapshot
         for player, data in pairs(snapshots) do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local root = player.Character.HumanoidRootPart
@@ -200,7 +187,6 @@ local function startVisualFreeze()
     end)
 end
 
--- Sự kiện nhấn nút xử lý việc Chuyển đổi trạng thái (Toggle)
 ActionButton.MouseButton1Click:Connect(function()
     if isActive then
         stopVisualFreeze()
