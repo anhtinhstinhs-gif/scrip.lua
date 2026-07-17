@@ -1,5 +1,5 @@
--- Roblox Head Aimlock & Mod Menu Custom Theme V24.8.1 (Đã sửa lỗi bay liên tục của Tấm Đế)
--- Sửa lỗi phản hồi vòng lặp tọa độ Y bằng cách khóa trục Y của tấm đế khi người chơi đứng trên đó
+-- Mod Menu Custom Theme V24.8.1 (Đã tích hợp Hệ thống Anti-AFK / Chống Server quét)
+-- Tính năng mới: Gửi tín hiệu W ảo, gọi humanoid:Move() ảo và rung Camera góc nhỏ để bỏ qua bộ đếm thời gian của Server.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local VirtualInputManager = game:GetService("VirtualInputManager") -- Hỗ trợ giả lập phím ảo
 
 -- 1. KHỞI TẠO GIAO DIỆN MENU V24.8.1
 local ScreenGui = Instance.new("ScreenGui")
@@ -35,8 +36,8 @@ OpenCorner.Parent = OpenButton
 -- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 250) 
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
+MainFrame.Size = UDim2.new(0, 450, 0, 275) -- Tăng nhẹ chiều cao để chứa thêm nút mới ở cột phải
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -137)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.BackgroundTransparency = 0.95
 MainFrame.Active = true
@@ -106,6 +107,7 @@ local HitboxEspActive = false
 local KillAuraActive = false     
 local AimActive = false
 local PlatformActive = false 
+local BypassServerActive = false -- Trạng thái nút Chống Server Phát Hiện
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -189,17 +191,48 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
 end
 
 -- =====================================================================
--- KHẮC PHỤC LỖI TẤM ĐẾ ĐỠ CHÂN TRÔI LÊN TRÊN (LEVITATION LOOP BUG)
+-- LOGIC HỆ THỐNG ĐỐI PHÓ SERVER PHÁT HIỆN AFK / TRẠNG THÁI TĨNH
+task.spawn(function()
+    while true do
+        task.wait(60) -- Lặp lại mỗi chu kỳ 60 giây
+        if BypassServerActive then
+            -- 1. Xử lý bộ đếm phím: Giả lập nhấn phím W ảo
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+            end)
 
+            -- 2. Xử lý nhân vật tĩnh: Gọi di chuyển ảo không đổi tọa độ thực tế
+            pcall(function()
+                local char = LocalPlayer.Character
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid:Move(Vector3.new(0, 0, 0.001), false) -- Di chuyển cực nhỏ gần như đứng im
+                end
+            end)
+
+            -- 3. Xử lý camera bất động: Xoay lệch 0.3 độ rồi phục hồi ngay lập tức
+            pcall(function()
+                local currentCFrame = Camera.CFrame
+                Camera.CFrame = currentCFrame * CFrame.Angles(0, math.rad(0.3), 0)
+                task.wait(0.05)
+                Camera.CFrame = currentCFrame
+            end)
+        end
+    end
+end)
+
+-- =====================================================================
+-- TẤM ĐẾ ĐỠ CHÂN TRÁNH LỖI BAY LIÊN TỤC
 local CharacterPlatform = nil
-local LockedPlatformY = nil -- Lưu trữ cao độ Y cố định để tránh lặp vô hạn khi đứng đè lên platform
+local LockedPlatformY = nil
 
 local function updatePlatform()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     
-    if PlatformActive and hrp and humanoid then
+    if PlatformActive and hrp then
         if not CharacterPlatform or not CharacterPlatform.Parent then
             CharacterPlatform = Instance.new("Part")
             CharacterPlatform.Name = "ClientWalkPlatform"
@@ -213,22 +246,15 @@ local function updatePlatform()
             LockedPlatformY = hrp.Position.Y - 3.25
         end
         
-        -- Nếu người chơi nhảy lên hoặc chủ động di chuyển cao hơn (vượt mức nền cũ) thì cập nhật Y mới
         if hrp.Position.Y - 3.25 > LockedPlatformY + 1.5 then
             LockedPlatformY = hrp.Position.Y - 3.25
-        -- Nếu người chơi rơi tự do xuống dưới sâu hơn vị trí nền cũ thì cập nhật để đỡ chân kịp thời
         elseif hrp.Position.Y - 3.25 < LockedPlatformY - 4 then
             LockedPlatformY = hrp.Position.Y - 3.25
         end
         
-        -- Cập nhật tọa độ X, Z theo nhân vật nhưng khóa tọa độ Y cố định để triệt tiêu lỗi đẩy vô hạn
         CharacterPlatform.CFrame = CFrame.new(hrp.Position.X, LockedPlatformY, hrp.Position.Z)
     else
-        if CharacterPlatform then 
-            CharacterPlatform:Destroy() 
-            CharacterPlatform = nil 
-            LockedPlatformY = nil
-        end
+        if CharacterPlatform then CharacterPlatform:Destroy() CharacterPlatform = nil LockedPlatformY = nil end
     end
 end
 
@@ -383,7 +409,7 @@ local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal
 end
 
 -- =====================================================================
--- PHÂN BỔ THIẾT LẬP GIAO DIỆN MỚI
+-- PHÂN BỔ THIẾT LẬP GIAO DIỆN
 
 -- --- CỘT TRÁI ---
 createSlider(LeftColumn, "Tốc độ chạy", 0, 16, 200, 16, function(val) currentSpeed = val end)
@@ -412,18 +438,4 @@ createToggleSwitch(RightColumn, "Xoay nhân vật", 30, function(state)
     end
 end)
 
-createToggleSwitch(RightColumn, "Khung Hộp 3D ESP", 60, function(state) HitboxEspActive = state updateAllESP() end)
-createToggleSwitch(RightColumn, "Mục tiêu AIM", 90, function(state) AimActive = state end)
-createToggleSwitch(RightColumn, "AOE Kill Toàn Bản Đồ", 120, function(state) KillAuraActive = state end)
-createToggleSwitch(RightColumn, "Tấm Đế Đỡ Chân", 150, function(state) PlatformActive = state end)
-
--- HIỆU ỨNG CẦU VỒNG ĐỔI MÀU THANH TRƯỢT VÀ NÚT FPS BOOST
-local hue = 0
-RunService.RenderStepped:Connect(function(deltaTime)
-    hue = (hue + (deltaTime * 0.1)) % 1
-    GlobalRainbowColor = Color3.fromHSV(hue, 1, 1)
-    for _, object in ipairs(RainbowObjects) do if object and object:IsA("GuiObject") then object.BackgroundColor3 = GlobalRainbowColor end end
-end)
-
-MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
-OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
+createToggleSwitch(RightColumn, "Khung Hộp 
