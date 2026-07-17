@@ -1,5 +1,6 @@
--- Mod Menu Custom Theme V24.8.1 (Đã tích hợp Hệ thống Anti-AFK / Chống Server quét)
--- Tính năng mới: Gửi tín hiệu W ảo, gọi humanoid:Move() ảo và rung Camera góc nhỏ để bỏ qua bộ đếm thời gian của Server.
+-- Mod Menu Custom Theme V24.8.1 (Đã sửa lỗi không hiển thị giao diện)
+-- Nguyên nhân lỗi: Các phần tử UI khởi tạo trực tiếp vào cột nhưng thuộc tính vị trí cũ (LayoutOrder hoặc Y position) bị đẩy ra khỏi khung nhìn, hoặc Image ID lỗi gây crash luồng UI. 
+-- Bản sửa đổi đã đồng bộ lại ZIndex, thay đổi phương thức kéo thả chuẩn hóa Core Gui/PlayerGui độc lập.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -9,14 +10,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local VirtualInputManager = game:GetService("VirtualInputManager") -- Hỗ trợ giả lập phím ảo
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Kiểm tra môi trường thực thi để tránh lỗi luồng PlayerGui chưa tải xong
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+if not PlayerGui then return end
+
+-- Xóa các bản UI cũ nếu có để tránh trùng lặp đè khuất nhau
+if PlayerGui:FindFirstChild("ModMenuCustomTheme_V24_8_1") then
+    PlayerGui["ModMenuCustomTheme_V24_8_1"]:Destroy()
+end
 
 -- 1. KHỞI TẠO GIAO DIỆN MENU V24.8.1
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ModMenuCustomTheme_V24_8_1"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = PlayerGui
 
 -- NÚT O MỞ MENU HÌNH TRÒN BỘ XƯƠNG
 local OpenButton = Instance.new("ImageButton")
@@ -27,6 +37,7 @@ OpenButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 OpenButton.BackgroundTransparency = 0.3
 OpenButton.Image = "rbxthumb://type=Asset&id=92781042692285&w=420&h=420"
 OpenButton.Visible = false
+OpenButton.ZIndex = 10
 OpenButton.Parent = ScreenGui
 
 local OpenCorner = Instance.new("UICorner")
@@ -36,11 +47,12 @@ OpenCorner.Parent = OpenButton
 -- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 275) -- Tăng nhẹ chiều cao để chứa thêm nút mới ở cột phải
+MainFrame.Size = UDim2.new(0, 450, 0, 275)
 MainFrame.Position = UDim2.new(0.5, -225, 0.5, -137)
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.95
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Tăng độ đậm nền gốc để hiển thị rõ ràng hơn nếu ảnh lỗi
+MainFrame.BackgroundTransparency = 0.2 -- Giảm độ trong suốt gốc để tránh bị trong suốt hoàn toàn khi mất ảnh nền
 MainFrame.Active = true
+MainFrame.ZIndex = 1
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
@@ -53,7 +65,8 @@ BackgroundImage.Name = "MenuBackground"
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
 BackgroundImage.Image = "rbxthumb://type=Asset&id=134759374241732&w=420&h=420"
 BackgroundImage.ScaleType = Enum.ScaleType.Stretch
-BackgroundImage.ZIndex = 0 
+BackgroundImage.BackgroundTransparency = 1
+BackgroundImage.ZIndex = 1 
 BackgroundImage.Parent = MainFrame
 
 local BGCorner = Instance.new("UICorner")
@@ -70,7 +83,7 @@ Title.TextSize = 16
 Title.Font = Enum.Font.SourceSansBold
 Title.BackgroundTransparency = 1
 Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.ZIndex = 2
+Title.ZIndex = 5
 Title.Parent = MainFrame
 
 -- NÚT ẨN MENU (—)
@@ -82,21 +95,25 @@ MinimizeButton.Text = "—"
 MinimizeButton.TextColor3 = Color3.fromRGB(255, 85, 85)
 MinimizeButton.TextSize = 20
 MinimizeButton.Font = Enum.Font.SourceSansBold
-MinimizeButton.ZIndex = 2
+MinimizeButton.ZIndex = 5
 MinimizeButton.Parent = MainFrame
 
 -- BỐ CỤC HAI CỘT
-local LeftColumn = Instance.new("Frame", MainFrame)
+local LeftColumn = Instance.new("Frame")
+LeftColumn.Name = "LeftColumn"
 LeftColumn.Size = UDim2.new(0.45, -10, 1, -45)
 LeftColumn.Position = UDim2.new(0, 10, 0, 40)
 LeftColumn.BackgroundTransparency = 1
-LeftColumn.ZIndex = 2
+LeftColumn.ZIndex = 5
+LeftColumn.Parent = MainFrame
 
-local RightColumn = Instance.new("Frame", MainFrame)
+local RightColumn = Instance.new("Frame")
+RightColumn.Name = "RightColumn"
 RightColumn.Size = UDim2.new(0.42, -10, 1, -45)
 RightColumn.Position = UDim2.new(1, -190, 0, 40)
 RightColumn.BackgroundTransparency = 1
-RightColumn.ZIndex = 2
+RightColumn.ZIndex = 5
+RightColumn.Parent = MainFrame
 
 local RainbowObjects = {} 
 local GlobalRainbowColor = Color3.fromRGB(255, 255, 255)
@@ -107,7 +124,7 @@ local HitboxEspActive = false
 local KillAuraActive = false     
 local AimActive = false
 local PlatformActive = false 
-local BypassServerActive = false -- Trạng thái nút Chống Server Phát Hiện
+local BypassServerActive = false
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -123,7 +140,7 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     Container.Size = UDim2.new(1, 0, 0, 24)
     Container.Position = UDim2.new(0, 0, 0, yOffset)
     Container.BackgroundTransparency = 1
-    Container.ZIndex = 2
+    Container.ZIndex = 5
     Container.Parent = parentCol
 
     local TextLabel = Instance.new("TextLabel")
@@ -135,7 +152,7 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     TextLabel.TextSize = 11
     TextLabel.Font = Enum.Font.SourceSansBold
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TextLabel.ZIndex = 2
+    TextLabel.ZIndex = 6
     TextLabel.Parent = Container
 
     local SwitchBase = Instance.new("TextButton")
@@ -143,7 +160,7 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     SwitchBase.Position = UDim2.new(1, -52, 0, 1)
     SwitchBase.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
     SwitchBase.Text = ""
-    SwitchBase.ZIndex = 2
+    SwitchBase.ZIndex = 6
     SwitchBase.Parent = Container
 
     local BaseCorner = Instance.new("UICorner")
@@ -158,14 +175,14 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
     StatusText.TextSize = 10
     StatusText.Font = Enum.Font.SourceSansBold
     StatusText.Position = UDim2.new(0, 8, 0, 0)
-    StatusText.ZIndex = 2
+    StatusText.ZIndex = 7
     StatusText.Parent = SwitchBase
 
     local CircleSlider = Instance.new("Frame")
     CircleSlider.Size = UDim2.new(0, 18, 0, 18)
     CircleSlider.Position = UDim2.new(0, 2, 0, 2)
     CircleSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    CircleSlider.ZIndex = 3
+    CircleSlider.ZIndex = 8
     CircleSlider.Parent = SwitchBase
 
     local CircleCorner = Instance.new("UICorner")
@@ -191,28 +208,25 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
 end
 
 -- =====================================================================
--- LOGIC HỆ THỐNG ĐỐI PHÓ SERVER PHÁT HIỆN AFK / TRẠNG THÁI TĨNH
+-- LOGIC HỆ THỐNG ĐỐI PHÓ SERVER PHÁT HIỆN AFK
 task.spawn(function()
     while true do
-        task.wait(60) -- Lặp lại mỗi chu kỳ 60 giây
+        task.wait(60)
         if BypassServerActive then
-            -- 1. Xử lý bộ đếm phím: Giả lập nhấn phím W ảo
             pcall(function()
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
                 task.wait(0.1)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
             end)
 
-            -- 2. Xử lý nhân vật tĩnh: Gọi di chuyển ảo không đổi tọa độ thực tế
             pcall(function()
                 local char = LocalPlayer.Character
                 local humanoid = char and char:FindFirstChildOfClass("Humanoid")
                 if humanoid then
-                    humanoid:Move(Vector3.new(0, 0, 0.001), false) -- Di chuyển cực nhỏ gần như đứng im
+                    humanoid:Move(Vector3.new(0, 0, 0.001), false)
                 end
             end)
 
-            -- 3. Xử lý camera bất động: Xoay lệch 0.3 độ rồi phục hồi ngay lập tức
             pcall(function()
                 local currentCFrame = Camera.CFrame
                 Camera.CFrame = currentCFrame * CFrame.Angles(0, math.rad(0.3), 0)
@@ -224,7 +238,7 @@ task.spawn(function()
 end)
 
 -- =====================================================================
--- TẤM ĐẾ ĐỠ CHÂN TRÁNH LỖI BAY LIÊN TỤC
+-- TẤM ĐẾ ĐỠ CHÂN
 local CharacterPlatform = nil
 local LockedPlatformY = nil
 
@@ -364,32 +378,43 @@ local function boostFPSSystem()
     RightColumn.FpsBoostBtn.Text = "Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- DI CHUYỂN MENU TRÊN MOBILE
-local dragging, dragInput, dragStart, startPos
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
+-- HỆ THỐNG KÉO THẢ CHUẨN HOÁ (Sửa lỗi crash luồng UserInput)
+local dragToggle = nil
+local dragStart = nil
+local startPos = nil
+
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        dragToggle = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragToggle = false
+            end
+        end)
     end
 end)
-MainFrame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
-UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
 
 -- HÀM TẠO SLIDER ĐỔI MÀU GỐC
 local function createSlider(parentCol, text, yOffset, minVal, maxVal, defaultVal, callback)
     local Label = Instance.new("TextLabel")
     Label.Size = UDim2.new(1, 0, 0, 16); Label.Position = UDim2.new(0, 0, 0, yOffset); Label.Text = text .. ": " .. defaultVal
-    Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextSize = 12; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.ZIndex = 2; Label.Parent = parentCol
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.TextSize = 12; Label.BackgroundTransparency = 1; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.ZIndex = 6; Label.Parent = parentCol
 
     local SliderBar = Instance.new("Frame")
-    SliderBar.Size = UDim2.new(1, 0, 0, 6); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 18); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.ZIndex = 2; SliderBar.Parent = parentCol
+    SliderBar.Size = UDim2.new(1, 0, 0, 6); SliderBar.Position = UDim2.new(0, 0, 0, yOffset + 18); SliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50); SliderBar.ZIndex = 6; SliderBar.Parent = parentCol
 
     local SliderBtn = Instance.new("TextButton")
-    SliderBtn.Size = UDim2.new(0, 14, 0, 14); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.ZIndex = 2; SliderBtn.Parent = SliderBar
+    SliderBtn.Size = UDim2.new(0, 14, 0, 14); SliderBtn.Position = UDim2.new(0, ((defaultVal - minVal) / (maxVal - minVal)) * 170, 0, -4); SliderBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); SliderBtn.Text = ""; SliderBtn.ZIndex = 7; SliderBtn.Parent = SliderBar
     Instance.new("UICorner", SliderBtn).CornerRadius = UDim.new(1, 0)
     table.insert(RainbowObjects, SliderBtn)
 
@@ -420,7 +445,7 @@ createSlider(LeftColumn, "Bán kính AOE Quét", 90, 10, 500, 150, function(val)
 local FpsBoostBtn = Instance.new("TextButton")
 FpsBoostBtn.Name = "FpsBoostBtn"; FpsBoostBtn.Size = UDim2.new(1, 0, 0, 24); FpsBoostBtn.Position = UDim2.new(0, 0, 0, 0)
 FpsBoostBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255); FpsBoostBtn.Text = "Tối Ưu FPS: CLICK"
-FpsBoostBtn.TextColor3 = Color3.fromRGB(255, 255, 255); FpsBoostBtn.TextSize = 12; FpsBoostBtn.Font = Enum.Font.SourceSansBold; FpsBoostBtn.ZIndex = 2; FpsBoostBtn.Parent = RightColumn
+FpsBoostBtn.TextColor3 = Color3.fromRGB(255, 255, 255); FpsBoostBtn.TextSize = 12; FpsBoostBtn.Font = Enum.Font.SourceSansBold; FpsBoostBtn.ZIndex = 6; FpsBoostBtn.Parent = RightColumn
 Instance.new("UICorner", FpsBoostBtn).CornerRadius = UDim.new(0, 5)
 table.insert(RainbowObjects, FpsBoostBtn)
 FpsBoostBtn.MouseButton1Click:Connect(boostFPSSystem)
@@ -429,13 +454,4 @@ createToggleSwitch(RightColumn, "Xoay nhân vật", 30, function(state)
     SpinActive = state
     local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
-        local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
-        if oldSpin then oldSpin:Destroy() end
-        if SpinActive then
-            local spin = Instance.new("BodyAngularVelocity", hrp); spin.Name = "SpinGlitchForce"
-            spin.MaxTorque = Vector3.new(0, math.huge, 0); spin.AngularVelocity = Vector3.new(0, 60, 0)
-        end
-    end
-end)
-
-createToggleSwitch(RightColumn, "Khung Hộp 
+        local oldSpin = hrp:FindFirstChild("SpinGlitchF
