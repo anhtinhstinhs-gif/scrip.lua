@@ -1,67 +1,102 @@
+--[[
+    MÃ NGUỒN: GIẢ LẬP NGƯNG ĐỌNG THỜI GIAN (CLIENT-SIDE VISUAL)
+    MỤC TIÊU: ĐÓNG BĂNG VỊ TRÍ HIỂN THỊ CỦA NGƯỜI CHƠI KHÁC TRÊN MÁY LOCAL TRONG 5 GIÂY
+    TÍNH CHẤT: HỢP LỆ, KHÔNG CAN THIỆP SERVER, CHỈ TẠO HIỆU ỨNG THỊ GIÁC
+--]]
+
+-- Khai báo các dịch vụ hệ thống
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. TẠO KHUNG GIAO DIỆN TEST
-local TestGui = Instance.new("ScreenGui")
-TestGui.Name = "Roblox_Image_Test_Script"
-TestGui.ResetOnSpawn = false
-TestGui.IgnoreGuiInset = true
-TestGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+-- Cấu hình tham số cơ chế
+local FREEZE_DURATION = 5.0 -- Thời gian đóng băng (giây)
+local isFrozen = false
+local snapshots = {}
+local renderConnection = nil
 
-local TestFrame = Instance.new("Frame")
-TestFrame.Name = "TestFrame"
-TestFrame.Size = UDim2.new(0, 300, 0, 300)
-TestFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
-TestFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TestFrame.Active = true
-TestFrame.Draggable = true -- Bạn có thể di chuyển bảng này trên màn hình
-TestFrame.Parent = TestGui
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "HỘP TEST HIỂN THỊ ẢNH"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.Font = Enum.Font.SourceSansBold
-Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Title.Parent = TestFrame
-
--- 2. KHUNG HIỂN THỊ ẢNH CHÍNH (SỬ DỤNG ID BẠN CUNG CẤP)
-local ImageDisplay = Instance.new("ImageLabel")
-ImageDisplay.Name = "ImageDisplay"
-ImageDisplay.Size = UDim2.new(0, 200, 0, 200)
-ImageDisplay.Position = UDim2.new(0.5, -100, 0.5, -80)
-ImageDisplay.ScaleType = Enum.ScaleType.Fit
-ImageDisplay.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Nền đen mặc định của khung
-ImageDisplay.Parent = TestFrame
-
--- Thử định dạng chuẩn mã Asset ID của Roblox bằng ID mới của bạn
-ImageDisplay.Image = "rbxassetid://115467504724680"
-
--- 3. NÚT ĐỂ ĐỔI SANG CÁC KIỂU ĐỊNH DẠNG KHÁC NẾU BỊ ĐEN
-local FormatButton = Instance.new("TextButton")
-FormatButton.Size = UDim2.new(0, 260, 0, 35)
-FormatButton.Position = UDim2.new(0.5, -130, 1, -45)
-FormatButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-FormatButton.Text = "Đang thử: rbxassetid://"
-FormatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FormatButton.TextSize = 14
-FormatButton.Font = Enum.Font.SourceSansBold
-FormatButton.Parent = TestFrame
-
-local currentFormat = 1
-FormatButton.MouseButton1Click:Connect(function()
-    currentFormat = currentFormat + 1
-    if currentFormat > 3 then currentFormat = 1 end
-    
-    if currentFormat == 1 then
-        ImageDisplay.Image = "rbxassetid://115467504724680"
-        FormatButton.Text = "Đang thử: rbxassetid://"
-    elseif currentFormat == 2 then
-        ImageDisplay.Image = "http://www.roblox.com/asset/?id=115467504724680"
-        FormatButton.Text = "Đang thử: Định dạng HTTP gốc"
-    elseif currentFormat == 3 then
-        ImageDisplay.Image = "rbxthumb://type=Asset&id=115467504724680&w=420&h=420"
-        FormatButton.Text = "Đang thử: Định dạng rbxthumb"
+-- Hàm khởi tạo và lưu trạng thái vị trí của các nhân vật khác
+local function takeSnapshots()
+    table.clear(snapshots)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local root = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if root and humanoid then
+                -- Lưu lại CFrame và trạng thái hoạt động của các khớp nối (Animation)
+                snapshots[player] = {
+                    CFrame = root.CFrame,
+                    Velocity = root.AssemblyLinearVelocity,
+                    RotVelocity = root.AssemblyAngularVelocity,
+                    AnimSpeed = humanoid.WalkSpeed
+                }
+            end
+        end
     end
-end)
+end
+
+-- Hàm thực thi đóng băng hiển thị cục bộ
+local function startVisualFreeze()
+    if isFrozen then return end
+    isFrozen = true
+    
+    -- Ghi nhận dữ liệu vị trí tại giây thứ 0
+    takeSnapshots()
+    
+    -- Tạo hiệu ứng mờ màn hình (ColorCorrection) để tăng hiệu ứng thị giác
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Saturation = -0.5
+    colorCorrection.TintColor = Color3.fromRGB(150, 180, 200)
+    colorCorrection.Parent = game.Workspace.CurrentCamera
+    
+    -- Ngắt cập nhật vị trí thông thường, ép các nhân vật đứng im tại chỗ cũ
+    renderConnection = RunService.RenderStepped:Connect(function()
+        for player, data in pairs(snapshots) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local root = player.Character.HumanoidRootPart
+                -- Ép CFrame liên tục để chống lại việc cập nhật từ server trên client của bạn
+                root.CFrame = data.CFrame
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                
+                -- Đóng băng hoạt ảnh
+                local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                        track:AdjustSpeed(0)
+                    end
+                end
+            end
+        end
+    end)
+    
+    -- Thiết lập thời gian tự động giải phóng cơ chế sau 5 giây
+    task.delay(FREEZE_DURATION, function()
+        if isFrozen then
+            isFrozen = false
+            if renderConnection then
+                renderConnection:Disconnect()
+                renderConnection = nil
+            end
+            
+            -- Xóa hiệu ứng màn hình
+            colorCorrection:Destroy()
+            
+            -- Khôi phục tốc độ hoạt ảnh và áp dụng hiệu ứng "nhảy vọt" vị trí do đồng bộ lại với Server
+            for player, data in pairs(snapshots) do
+                if player.Character then
+                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                            track:AdjustSpeed(1)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Lắng nghe kích hoạt từ hệ thống (Ví dụ gắn với phím bấm hoặc sự kiện game)
+-- Sử dụng: Gọi hàm `startVisualFreeze()` khi người chơi sử dụng kỹ năng.
