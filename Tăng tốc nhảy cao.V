@@ -1,6 +1,5 @@
--- Mod Menu Custom Theme V24.8.1 (Đã sửa lỗi không hiển thị giao diện)
--- Nguyên nhân lỗi: Các phần tử UI khởi tạo trực tiếp vào cột nhưng thuộc tính vị trí cũ (LayoutOrder hoặc Y position) bị đẩy ra khỏi khung nhìn, hoặc Image ID lỗi gây crash luồng UI. 
--- Bản sửa đổi đã đồng bộ lại ZIndex, thay đổi phương thức kéo thả chuẩn hóa Core Gui/PlayerGui độc lập.
+-- Mod Menu Custom Theme V24.8.1 (Đã loại bỏ hoàn toàn hệ thống chống AFK / chống quét Server)
+-- Sửa đổi: Xóa VirtualInputManager và luồng lặp giả lập phím/camera để đảm bảo UI không bị chặn hoặc treo luồng tải.
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,13 +9,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- Kiểm tra môi trường thực thi để tránh lỗi luồng PlayerGui chưa tải xong
+-- Đảm bảo PlayerGui tồn tại
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 if not PlayerGui then return end
 
--- Xóa các bản UI cũ nếu có để tránh trùng lặp đè khuất nhau
+-- Xóa bản cũ để tránh trùng lặp đè khuất nhau
 if PlayerGui:FindFirstChild("ModMenuCustomTheme_V24_8_1") then
     PlayerGui["ModMenuCustomTheme_V24_8_1"]:Destroy()
 end
@@ -47,10 +45,10 @@ OpenCorner.Parent = OpenButton
 -- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 275)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -137)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15) -- Tăng độ đậm nền gốc để hiển thị rõ ràng hơn nếu ảnh lỗi
-MainFrame.BackgroundTransparency = 0.2 -- Giảm độ trong suốt gốc để tránh bị trong suốt hoàn toàn khi mất ảnh nền
+MainFrame.Size = UDim2.new(0, 450, 0, 250) -- Khôi phục chiều cao ban đầu sau khi bỏ nút AFK
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -125)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BackgroundTransparency = 0.2
 MainFrame.Active = true
 MainFrame.ZIndex = 1
 MainFrame.Parent = ScreenGui
@@ -124,7 +122,6 @@ local HitboxEspActive = false
 local KillAuraActive = false     
 local AimActive = false
 local PlatformActive = false 
-local BypassServerActive = false
 
 local OptimizeLevel = 0 
 local currentSpeed = 16
@@ -206,36 +203,6 @@ local function createToggleSwitch(parentCol, text, yOffset, callback)
         callback(isOn)
     end)
 end
-
--- =====================================================================
--- LOGIC HỆ THỐNG ĐỐI PHÓ SERVER PHÁT HIỆN AFK
-task.spawn(function()
-    while true do
-        task.wait(60)
-        if BypassServerActive then
-            pcall(function()
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-            end)
-
-            pcall(function()
-                local char = LocalPlayer.Character
-                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid:Move(Vector3.new(0, 0, 0.001), false)
-                end
-            end)
-
-            pcall(function()
-                local currentCFrame = Camera.CFrame
-                Camera.CFrame = currentCFrame * CFrame.Angles(0, math.rad(0.3), 0)
-                task.wait(0.05)
-                Camera.CFrame = currentCFrame
-            end)
-        end
-    end
-end)
 
 -- =====================================================================
 -- TẤM ĐẾ ĐỠ CHÂN
@@ -378,7 +345,7 @@ local function boostFPSSystem()
     RightColumn.FpsBoostBtn.Text = "Tối Ưu FPS: CẤP " .. OptimizeLevel
 end
 
--- HỆ THỐNG KÉO THẢ CHUẨN HOÁ (Sửa lỗi crash luồng UserInput)
+-- HỆ THỐNG KÉO THẢ CHUẨN HOÁ
 local dragToggle = nil
 local dragStart = nil
 local startPos = nil
@@ -454,4 +421,27 @@ createToggleSwitch(RightColumn, "Xoay nhân vật", 30, function(state)
     SpinActive = state
     local char = LocalPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if hrp then
-        local oldSpin = hrp:FindFirstChild("SpinGlitchF
+        local oldSpin = hrp:FindFirstChild("SpinGlitchForce")
+        if oldSpin then oldSpin:Destroy() end
+        if SpinActive then
+            local spin = Instance.new("BodyAngularVelocity", hrp); spin.Name = "SpinGlitchForce"
+            spin.MaxTorque = Vector3.new(0, math.huge, 0); spin.AngularVelocity = Vector3.new(0, 60, 0)
+        end
+    end
+end)
+
+createToggleSwitch(RightColumn, "Khung Hộp 3D ESP", 60, function(state) HitboxEspActive = state updateAllESP() end)
+createToggleSwitch(RightColumn, "Mục tiêu AIM", 90, function(state) AimActive = state end)
+createToggleSwitch(RightColumn, "AOE Kill Toàn Bản Đồ", 120, function(state) KillAuraActive = state end)
+createToggleSwitch(RightColumn, "Tấm Đế Đỡ Chân", 150, function(state) PlatformActive = state end)
+
+-- HIỆU ỨNG CẦU VỒNG ĐỔI MÀU THANH TRƯỢT VÀ NÚT FPS BOOST
+local hue = 0
+RunService.RenderStepped:Connect(function(deltaTime)
+    hue = (hue + (deltaTime * 0.1)) % 1
+    GlobalRainbowColor = Color3.fromHSV(hue, 1, 1)
+    for _, object in ipairs(RainbowObjects) do if object and object:IsA("GuiObject") then object.BackgroundColor3 = GlobalRainbowColor end end
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function() MainFrame.Visible = false; OpenButton.Visible = true end)
+OpenButton.MouseButton1Click:Connect(function() MainFrame.Visible = true; OpenButton.Visible = false end)
