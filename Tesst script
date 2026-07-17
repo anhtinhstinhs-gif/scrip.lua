@@ -1,22 +1,101 @@
 --[[
-    MÃ NGUỒN: GIẢ LẬP NGƯNG ĐỌNG THỜI GIAN (CLIENT-SIDE VISUAL)
-    MỤC TIÊU: ĐÓNG BĂNG VỊ TRÍ HIỂN THỊ CỦA NGƯỜI CHƠI KHÁC TRÊN MÁY LOCAL TRONG 5 GIÂY
-    TÍNH CHẤT: HỢP LỆ, KHÔNG CAN THIỆP SERVER, CHỈ TẠO HIỆU ỨNG THỊ GIÁC
+    MÃ NGUỒN: HỆ THỐNG MENU VÀ NÚT BẤM KÍCH HOẠT NGƯNG ĐỌNG THỜI GIAN (5 GIÂY)
+    HƯỚNG DẪN DÁN: Dán toàn bộ mã nguồn này vào một 'LocalScript' nằm bên trong 'StarterPlayerScripts' hoặc 'StarterGui'.
+    TÍNH NĂNG: 
+    - Tự động tạo giao diện Menu điều khiển góc màn hình.
+    - Có nút tròn hiển thị thời gian đếm ngược trực quan.
+    - Bật menu để kích hoạt đông cứng. Có thể bấm tắt bất kỳ lúc nào để hủy ngay lập tức.
 --]]
 
--- Khai báo các dịch vụ hệ thống
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
 local LocalPlayer = Players.LocalPlayer
 
--- Cấu hình tham số cơ chế
-local FREEZE_DURATION = 5.0 -- Thời gian đóng băng (giây)
-local isFrozen = false
+-- Khởi tạo Giao diện người dùng (GUI) hoàn toàn bằng Code
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TimeDilationGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Khung chứa Menu chính
+local MainMenu = Instance.new("Frame")
+MainMenu.Name = "MainMenu"
+MainMenu.Size = UDim2.new(0, 180, 0, 80)
+MainMenu.Position = UDim2.new(0.05, 0, 0.4, 0)
+MainMenu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainMenu.BorderSizePixel = 0
+MainMenu.Active = true
+MainMenu.Draggable = true -- Cho phép người chơi kéo di chuyển menu trên màn hình
+MainMenu.Parent = ScreenGui
+
+local MenuCorner = Instance.new("UICorner")
+MenuCorner.CornerRadius = UDim.new(0, 10)
+MenuCorner.Parent = MainMenu
+
+-- Nhãn tiêu đề Menu
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, 0, 0.4, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "HỆ THỐNG THỜI GIAN"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 14
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Parent = MainMenu
+
+-- Nút bấm Bật/Tắt chính
+local ActionButton = Instance.new("TextButton")
+ActionButton.Name = "ActionButton"
+ActionButton.Size = UDim2.new(0, 140, 0, 35)
+ActionButton.Position = UDim2.new(0.5, -70, 0.5, 0)
+ActionButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- Màu xanh lá mặc định (Sẵn sàng)
+ActionButton.Text = "BẬT ĐÔNG CỨNG"
+ActionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ActionButton.TextSize = 14
+ActionButton.Font = Enum.Font.SourceSansBold
+ActionButton.BorderSizePixel = 0
+ActionButton.Parent = MainMenu
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 8)
+ButtonCorner.Parent = ActionButton
+
+-- Nút tròn đếm ngược hiển thị trạng thái
+local StatusCircle = Instance.new("Frame")
+StatusCircle.Name = "StatusCircle"
+StatusCircle.Size = UDim2.new(0, 50, 0, 50)
+StatusCircle.Position = UDim2.new(0.5, -25, 0, -60) -- Nằm phía trên Menu chính
+StatusCircle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+StatusCircle.BorderSizePixel = 0
+StatusCircle.Visible = false
+StatusCircle.Parent = MainMenu
+
+local CircleCorner = Instance.new("UICorner")
+CircleCorner.CornerRadius = UDim.new(1, 0) -- Tạo hình tròn tuyệt đối
+CircleCorner.Parent = StatusCircle
+
+local CountdownLabel = Instance.new("TextLabel")
+CountdownLabel.Size = UDim2.new(1, 0, 1, 0)
+CountdownLabel.BackgroundTransparency = 1
+CountdownLabel.Text = "5"
+CountdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+CountdownLabel.TextSize = 22
+CountdownLabel.Font = Enum.Font.SourceSansBold
+CountdownLabel.Parent = StatusCircle
+
+-------------------------------------------------------------------------
+-- CƠ CHẾ LOGIC ĐIỀU KHIỂN ĐÔNG CỨNG VÀ HỦY LỆNH
+-------------------------------------------------------------------------
+
+local FREEZE_DURATION = 5.0
+local isActive = false
 local snapshots = {}
 local renderConnection = nil
+local colorCorrection = nil
+local countdownThread = nil
 
--- Hàm khởi tạo và lưu trạng thái vị trí của các nhân vật khác
+-- Hàm chụp trạng thái hệ thống cục bộ
 local function takeSnapshots()
     table.clear(snapshots)
     for _, player in ipairs(Players:GetPlayers()) do
@@ -24,43 +103,84 @@ local function takeSnapshots()
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             if root and humanoid then
-                -- Lưu lại CFrame và trạng thái hoạt động của các khớp nối (Animation)
                 snapshots[player] = {
                     CFrame = root.CFrame,
-                    Velocity = root.AssemblyLinearVelocity,
-                    RotVelocity = root.AssemblyAngularVelocity,
-                    AnimSpeed = humanoid.WalkSpeed
+                    PlayingAnims = humanoid:GetPlayingAnimationTracks()
                 }
             end
         end
     end
 end
 
--- Hàm thực thi đóng băng hiển thị cục bộ
-local function startVisualFreeze()
-    if isFrozen then return end
-    isFrozen = true
+-- Hàm tắt hoàn toàn tính năng và khôi phục trạng thái
+local function stopVisualFreeze()
+    if not isActive then return end
+    isActive = false
     
-    -- Ghi nhận dữ liệu vị trí tại giây thứ 0
+    -- Ngắt kết nối vòng lặp RenderStepped ngay lập tức
+    if renderConnection then
+        renderConnection:Disconnect()
+        renderConnection = nil
+    end
+    
+    -- Xóa luồng đếm ngược nếu đang chạy ngầm
+    if countdownThread then
+        task.cancel(countdownThread)
+        countdownThread = nil
+    end
+    
+    -- Xóa hiệu ứng màu màn hình
+    if colorCorrection then
+        colorCorrection:Destroy()
+        colorCorrection = nil
+    end
+    
+    -- Khôi phục hoạt ảnh cho các người chơi khác
+    for player, data in pairs(snapshots) do
+        if player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                    track:AdjustSpeed(1)
+                end
+            end
+        end
+    end
+    
+    -- Cập nhật giao diện về trạng thái ban đầu
+    StatusCircle.Visible = false
+    ActionButton.Text = "BẬT ĐÔNG CỨNG"
+    ActionButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+end
+
+-- Hàm bật tính năng đông cứng
+local function startVisualFreeze()
+    if isActive then return end
+    isActive = true
+    
+    -- Cập nhật giao diện khi đang hoạt động
+    ActionButton.Text = "TẮT TÍNH NĂNG"
+    ActionButton.BackgroundColor3 = Color3.fromRGB(231, 76, 60) -- Đổi sang màu đỏ
+    StatusCircle.Visible = true
+    CountdownLabel.Text = tostring(FREEZE_DURATION)
+    
     takeSnapshots()
     
-    -- Tạo hiệu ứng mờ màn hình (ColorCorrection) để tăng hiệu ứng thị giác
-    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    -- Khởi tạo hiệu ứng bộ lọc màu thị giác
+    colorCorrection = Instance.new("ColorCorrectionEffect")
     colorCorrection.Saturation = -0.5
     colorCorrection.TintColor = Color3.fromRGB(150, 180, 200)
     colorCorrection.Parent = game.Workspace.CurrentCamera
     
-    -- Ngắt cập nhật vị trí thông thường, ép các nhân vật đứng im tại chỗ cũ
+    -- Vòng lặp khóa vị trí và đóng băng animation trên client
     renderConnection = RunService.RenderStepped:Connect(function()
         for player, data in pairs(snapshots) do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local root = player.Character.HumanoidRootPart
-                -- Ép CFrame liên tục để chống lại việc cập nhật từ server trên client của bạn
                 root.CFrame = data.CFrame
                 root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
                 
-                -- Đóng băng hoạt ảnh
                 local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
                 if humanoid then
                     for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
@@ -71,32 +191,26 @@ local function startVisualFreeze()
         end
     end)
     
-    -- Thiết lập thời gian tự động giải phóng cơ chế sau 5 giây
-    task.delay(FREEZE_DURATION, function()
-        if isFrozen then
-            isFrozen = false
-            if renderConnection then
-                renderConnection:Disconnect()
-                renderConnection = nil
-            end
-            
-            -- Xóa hiệu ứng màn hình
-            colorCorrection:Destroy()
-            
-            -- Khôi phục tốc độ hoạt ảnh và áp dụng hiệu ứng "nhảy vọt" vị trí do đồng bộ lại với Server
-            for player, data in pairs(snapshots) do
-                if player.Character then
-                    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                            track:AdjustSpeed(1)
-                        end
-                    end
-                end
-            end
+    -- Xử lý luồng đếm ngược giảm dần từ 5 về 0 giây
+    countdownThread = task.defer(function()
+        local timeLeft = FREEZE_DURATION
+        while timeLeft > 0 and isActive do
+            task.wait(1)
+            timeLeft = timeLeft - 1
+            CountdownLabel.Text = tostring(math.max(0, timeLeft))
+        end
+        -- Tự động ngắt khi hết thời gian đếm ngược
+        if isActive then
+            stopVisualFreeze()
         end
     end)
 end
 
--- Lắng nghe kích hoạt từ hệ thống (Ví dụ gắn với phím bấm hoặc sự kiện game)
--- Sử dụng: Gọi hàm `startVisualFreeze()` khi người chơi sử dụng kỹ năng.
+-- Sự kiện nhấn nút xử lý việc Chuyển đổi trạng thái (Toggle)
+ActionButton.MouseButton1Click:Connect(function()
+    if isActive then
+        stopVisualFreeze()
+    else
+        startVisualFreeze()
+    end
+end)
